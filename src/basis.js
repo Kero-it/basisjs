@@ -1267,10 +1267,7 @@
 
     if (NODE_ENV)
     {
-      var _node_path = require('path');
-      var _node_fs = require('fs');
-
-      utils = slice(_node_path, [
+      utils = slice(require('path'), [
         'normalize',
         'dirname',
         'extname',
@@ -1279,7 +1276,9 @@
         'relative'
       ]);
 
-      utils.existsSync = _node_fs.existsSync || _node_path.existsSync;
+      var existsSync = require('fs').existsSync;
+      if (existsSync)
+        utils.existsSync = existsSync;
     }
     else
     {
@@ -1318,7 +1317,11 @@
           while (abs[i] == loc[i] && typeof loc[i] == 'string')
             i++;
 
-          return '../'.repeat(loc.length - i) + abs.slice(i).join('/');
+          var prefix = '';
+          for (var j = loc.length - i; j >= 0; j--)
+            prefix += '../';
+
+          return prefix + abs.slice(i).join('/');
         }
       };
     }
@@ -1334,12 +1337,12 @@
   //
 
   var config = (function(){
-    function getConfigAttr(node){
-      return node.getAttributeNode('data-basis-config') || node.getAttributeNode('basis-config');
-    }
 
-    var config = {};
     var basisUrl = '';
+    var config = {
+      'es5Shim': true,
+      'legacy': true      // TODO: set to false by default
+    };
 
     if (NODE_ENV)
     {
@@ -1349,27 +1352,28 @@
     else
     {
       // browser env
-      var basisScriptEl = arrayFrom(document.getElementsByTagName('script')).filter(getConfigAttr).pop();
-      if (basisScriptEl)
+      var scripts = document.getElementsByTagName('script');
+      for (var i = 0, scriptEl; scriptEl = scripts[i]; i++)
       {
-        var configValue = getConfigAttr(basisScriptEl).nodeValue.trim();
-        if (configValue)
+        var configAttrNode = scriptEl.getAttributeNode('data-basis-config') || scriptEl.getAttributeNode('basis-config')
+        if (configAttrNode)
         {
           try {
-            config = ('{' + configValue + '}').toObject(true) || {};
+            extend(config, Function('return{' + configAttrNode.nodeValue + '}')() || {});
           } catch (e) {
             ;;;consoleMethods.warn('basis.js config parse fault: ' + e);
           }
-        }
 
-        basisUrl = pathUtils.dirname(basisScriptEl.src);
+          basisUrl = pathUtils.dirname(scriptEl.src);
+
+          break;
+        }
       }
     }
 
-    if (!config.path)
-      config.path = {};
-
-    config.path.basis = basisUrl;
+    config.path = extend(config.path || {}, {
+      basis: basisUrl
+    });
       
     var autoload = config.autoload;
     config.autoload = false;
