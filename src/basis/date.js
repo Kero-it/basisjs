@@ -115,130 +115,7 @@
     return format.replace(reFormat, useUTC ? utc : local);
   }
 
-  // Date prototype extension
-
-  basis.object.extend(Date.prototype, {
-    isLeapYear: function(){
-      return isLeapYear(this.getFullYear());
-    },
-    getMonthDayCount: function(){
-      return getMonthDayCount(this.getMonth(), this.getFullYear());
-    },
-    add: function(part, value){
-      var getter = GETTER[part];
-
-      if (!getter)
-        throw new Error(PART_ERROR + part);
-
-      var day;
-      if (part == 'year' || part == 'month')
-      {
-        day = this.getDate();
-        if (day > 28)
-          this.setDate(1);
-      }
-
-      SETTER[part](this, getter(this) + value);
-
-      if (day > 28)
-      {
-        var monthDayCount = this.getMonthDayCount();
-        /*if (day > monthDayCount)
-          this.setDate(monthDayCount);*/
-        this.setDate(Math.min(day, monthDayCount));
-      }
-
-      return this;
-    },
-    diff: function(part, date){
-      if (part == 'year' || part == 'month')
-      {
-        var dir = Number(this) - Number(date) > 0 ? -1 : 1;
-        var left = dir > 0 ? this : date;
-        var right = dir > 0 ? date : this;
-
-        var ly = left.getFullYear();
-        var ry = right.getFullYear();
-        var ydiff = ry - ly;
-
-        if (part == 'year')
-          return dir * ydiff;
-
-        var lm = left.getMonth();
-        var rm = right.getMonth();
-        var mdiff = ydiff ? ((ydiff > 1 ? (ydiff - 1) * 12 : 0) + (12 - 1 - lm) + (rm + 1)) : rm - lm;
-
-        return dir * mdiff;
-      }
-      else
-      {
-        var diff = Math.floor((date - this)/DIFF_BASE[part]);
-        return diff + Number(GETTER[part](new Date(date - diff * DIFF_BASE[part])) - GETTER[part](this) != 0);
-      }
-    },
-    set: function(part, value){
-      var setter = SETTER[part];
-
-      if (!setter)
-        throw new Error(PART_ERROR + part);
-
-      var day;
-      if (part == 'year' || part == 'month')
-      {
-        day = this.getDate();
-        if (day > 28)
-          this.setDate(1);
-      }
-
-      setter(this, value);
-
-      if (day > 28)
-      {
-        var monthDayCount = this.getMonthDayCount();
-        //if (day > monthDayCount)
-        this.setDate(Math.min(day, monthDayCount));
-      }
-
-      return this;
-    },
-    get: function(part){
-      if (GETTER[part])
-        return GETTER[part](this);
-
-      throw new Error(PART_ERROR + part);
-    },
-    toISODateString: function(){
-      return dateFormat(this, '%Y-%M-%D', true);
-    },
-    toISOTimeString: function(){
-      return dateFormat(this, '%H:%I:%S.%Z', true);
-    },
-    fromDate: function(date){
-      if (date instanceof Date)
-      {
-        this.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-        this.setTime(date.getTime());
-      }
-
-      return this;
-    },
-    toFormat: function(format){
-      return dateFormat(this, format);
-    }
-  });
-
-  basis.object.complete(Date.prototype, {
-    // implemented in ECMAScript5
-    // TODO: check for time zone
-    toISOString: function(){
-      return this.toISODateString() + 'T' + this.toISOTimeString() + 'Z';
-    },
-    fromISOString: function(isoDateString){
-      return this.fromDate(fromISOString(isoDateString));
-    }
-  });
-
-  // extend Date
+  // parse date from ISO date format string
   var fromISOString = (function(){
     function fastDateParse(y, m, d, h, i, s, ms){
       return new Date(y, m - 1, d, h || 0, (i || 0) - tz, s || 0, ms ? ms.substr(0, 3) : 0);
@@ -261,17 +138,143 @@
   })();
 
 
+  // Date prototype extension
+
+  var dateFn = {
+    isLeapYear: function(date){
+      return isLeapYear(date.getFullYear());
+    },
+    getMonthDayCount: function(date){
+      return getMonthDayCount(date.getMonth(), date.getFullYear());
+    },
+    add: function(date, part, value){
+      var getter = GETTER[part];
+
+      if (!getter)
+        throw new Error(PART_ERROR + part);
+
+      var day;
+      if (part == 'year' || part == 'month')
+      {
+        day = date.getDate();
+        if (day > 28)
+          date.setDate(1);
+      }
+
+      SETTER[part](date, getter(date) + value);
+
+      if (day > 28)
+      {
+        var monthDayCount = date.getMonthDayCount();
+        date.setDate(Math.min(day, monthDayCount));
+      }
+
+      return date;
+    },
+    diff: function(whatDate, part, withDate){
+      if (part == 'year' || part == 'month')
+      {
+        var dir = Number(whatDate) - Number(withDate) > 0 ? -1 : 1;
+        var left = dir > 0 ? whatDate : withDate;
+        var right = dir > 0 ? withDate : whatDate;
+
+        var ly = left.getFullYear();
+        var ry = right.getFullYear();
+        var ydiff = ry - ly;
+
+        if (part == 'year')
+          return dir * ydiff;
+
+        var lm = left.getMonth();
+        var rm = right.getMonth();
+        var mdiff = ydiff ? ((ydiff > 1 ? (ydiff - 1) * 12 : 0) + (12 - 1 - lm) + (rm + 1)) : rm - lm;
+
+        return dir * mdiff;
+      }
+      else
+      {
+        var diff = Math.floor((withDate - whatDate)/DIFF_BASE[part]);
+        return diff + Number(GETTER[part](new Date(withDate - diff * DIFF_BASE[part])) - GETTER[part](whatDate) != 0);
+      }
+    },
+    set: function(date, part, value){
+      var setter = SETTER[part];
+
+      if (!setter)
+        throw new Error(PART_ERROR + part);
+
+      var day;
+      if (part == 'year' || part == 'month')
+      {
+        day = date.getDate();
+        if (day > 28)
+          date.setDate(1);
+      }
+
+      setter(date, value);
+
+      if (day > 28)
+      {
+        var monthDayCount = date.getMonthDayCount();
+        //if (day > monthDayCount)
+        date.setDate(Math.min(day, monthDayCount));
+      }
+
+      return date;
+    },
+    get: function(date, part){
+      if (GETTER[part])
+        return GETTER[part](date);
+
+      throw new Error(PART_ERROR + part);
+    },
+    toISODateString: function(date){
+      return dateFormat(date, '%Y-%M-%D', true);
+    },
+    toISOTimeString: function(date){
+      return dateFormat(date, '%H:%I:%S.%Z', true);
+    },
+    fromDate: function(date, fromDate){
+      if (fromDate instanceof Date)
+      {
+        date.setFullYear(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+        date.setTime(fromDate.getTime());
+      }
+
+      return date;
+    },
+    toFormat: function(date, format){
+      return dateFormat(date, format);
+    }
+  };
+
+  // extend Date.prototype
+  basis.object.iterate(dateFn, function(name, method){
+    Date.prototype[name] = function(){
+      return method.apply(null, [this].concat(basis.array(arguments)));
+    };
+  });
+
+  basis.object.complete(Date.prototype, {
+    // implemented in ECMAScript5
+    // TODO: check for time zone
+    toISOString: function(){
+      return dateFn.toISODateString(this) + 'T' + dateFn.toISOTimeString(this) + 'Z';
+    },
+    fromISOString: function(isoDateString){
+      return dateFn.fromDate(this, fromISOString(isoDateString));
+    }
+  });
+
+
   //
   // export names
   //
 
-  module.exports = {
+  module.exports = basis.object.extend(dateFn, {
     monthNumToAbbr: monthNumToAbbr,
     dayNumToAbbr: dayNumToAbbr,
 
-    isLeapYear: isLeapYear,
-    getMonthDayCount: getMonthDayCount,
-
     format: dateFormat,
     fromISOString: fromISOString
-  };
+  });
