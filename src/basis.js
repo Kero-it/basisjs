@@ -497,7 +497,6 @@
 
       return result;
     };
-
   })();
 
   var nullGetter = extend(function(){}, {
@@ -700,7 +699,7 @@
   var config = (function(){
     var basisUrl = '';
     var config = {
-      'es5Shim': true,
+      'es5shim': true,
       'legacy': true      // TODO: set to false by default
     };
 
@@ -764,844 +763,6 @@
 
     return config;
   })();
-
-
- /**
-  * @namespace Function.prototype
-  */
-
-  complete(Function.prototype, {
-   /**
-    * Changes function default context. It also makes possible to set static
-    * arguments (folding) for function.
-    * Implemented in ES5.
-    * @param {Object} thisObject
-    * @param {...*} args
-    * @return {function()}
-    * TODO: check compliance
-    */
-    bind: function(thisObject){
-      var fn = this;
-      var params = arrayFrom(arguments, 1);
-
-      return params.length
-        ? function(){
-            return fn.apply(thisObject, params.concat.apply(params, arguments));
-          }
-        : function(){
-            return fn.apply(thisObject, arguments);
-          };
-    }
-  });  
-
-
- /**
-  * Array extensions
-  * @namespace Array
-  */
-
-  complete(Array, {
-   /**
-    * Returns true if value is Array instance.
-    * Implemented in ES5.
-    * @param {*} value Value to be tested.
-    * @return {boolean}
-    */
-    isArray: function(value){
-      return Object.prototype.toString.call(value) === '[object Array]';
-    }
-  });
-
-  function arrayFrom(object, offset){
-    if (object != null)
-    {
-      var len = object.length;
-
-      if (typeof len == 'undefined')
-        return [object];
-
-      if (!offset)
-        offset = 0;
-
-      if (len - offset > 0)
-      {
-        for (var result = [], k = 0, i = offset; i < len;)
-          result[k++] = object[i++];
-        return result;
-      }
-    }
-
-    return [];
-  }
-
-  function createArray(length, fillValue, thisObject){
-    var result = [];
-    var isFunc = typeof fillValue == 'function';
-
-    for (var i = 0; i < length; i++)
-      result[i] = isFunc ? fillValue.call(thisObject, i, result) : fillValue;
-
-    return result;
-  }
-
-
- /**
-  * @namespace Array.prototype
-  */
-
-  complete(Array.prototype, {
-    // JavaScript 1.6
-    indexOf: function(searchElement, offset){
-      offset = parseInt(offset, 10) || 0;
-      if (offset < 0)
-        return -1;
-      for (; offset < this.length; offset++)
-        if (this[offset] === searchElement)
-          return offset;
-      return -1;
-    },
-    lastIndexOf: function(searchElement, offset){
-      var len = this.length;
-      offset = parseInt(offset, 10);
-      if (isNaN(offset) || offset >= len)
-        offset = len - 1;
-      else
-        offset = (offset + len) % len;
-      for (; offset >= 0; offset--)
-        if (this[offset] === searchElement)
-          return offset;
-      return -1;
-    },
-    forEach: function(callback, thisObject){
-      for (var i = 0, len = this.length; i < len; i++)
-        if (i in this)
-          callback.call(thisObject, this[i], i, this);
-    },
-    every: function(callback, thisObject){
-      for (var i = 0, len = this.length; i < len; i++)
-        if (i in this && !callback.call(thisObject, this[i], i, this))
-          return false;
-      return true;
-    },
-    some: function(callback, thisObject){
-      for (var i = 0, len = this.length; i < len; i++)
-        if (i in this && callback.call(thisObject, this[i], i, this))
-          return true;
-      return false;
-    },
-    filter: function(callback, thisObject){
-      var result = [];
-      for (var i = 0, len = this.length; i < len; i++)
-        if (i in this && callback.call(thisObject, this[i], i, this))
-          result.push(this[i]);
-      return result;
-    },
-    map: function(callback, thisObject){
-      var result = [];
-      for (var i = 0, len = this.length; i < len; i++)
-        if (i in this)
-          result[i] = callback.call(thisObject, this[i], i, this);
-      return result;
-    },
-    // JavaScript 1.8
-    reduce: function(callback, initialValue){ // unfortunately mozilla implementation hasn't thisObject as third argument
-      var len = this.length;
-      var argsLen = arguments.length;
-
-      // no value to return if no initial value and an empty array
-      if (len == 0 && argsLen == 1)
-        throw new TypeError();
-
-      var result;
-      var inited = 0;
-
-      if (argsLen > 1)
-      {
-        result = initialValue;
-        inited = 1;
-      }
-
-      for (var i = 0; i < len; i++)
-        if (i in this)
-          if (inited++)
-            result = callback.call(null, result, this[i], i, this);
-          else
-            result = this[i];
-
-      return result;
-    }
-  });
-
-  extend(Array.prototype, {
-    // extractors
-    flatten: function(){
-      return this.concat.apply([], this);
-    },
-    repeat: function(count){
-      return createArray(parseInt(count, 10) || 0, this).flatten();
-    },
-
-    // getters
-    item: function(index){
-      index = parseInt(index || 0, 10);
-      return this[index >= 0 ? index : this.length + index];
-    },
-
-    // search
-   /**
-    * Returns first item where getter(item) === value
-    * @example
-    *   var list = [{ a: 1, b: 2 }, { a: 2, b: 3 }, { a: 1, b: 4}, { a: 5 }];
-    *
-    *   // search for item where object.a == 2
-    *   var result = list.search(5, 'a');
-    *     // result -> { a: 5 }
-    *
-    *   // search for where a == 1 && b > 2
-    *   var result = list.search(true, function(object){ return object.a == 1 && object.b > 2 });
-    *     // result -> { a: 1, b: 3 }
-    *
-    *   // search all items where a == 1
-    *   var result = new Array();
-    *   var item = list.search(1, 'a');
-    *   while (item)
-    *   {
-    *     result.push(item)
-    *     item = list.search(1, 'a', Array.lastSearchIndex + 1);
-    *                                   // lastSearchIndex store index of last founded item
-    *   }
-    *     // result -> [{ a: 1, b: 2 }, { a: 1, b: 4}]
-    *
-    *   // but if you need all items of array with filtered by condition use Array#filter method instead
-    *   var result = list.filter(basis.getter('a == 1'));
-    *
-    * @param {*} value
-    * @param {function(object)|string} getter_
-    * @param {number=} offset
-    * @return {*}
-    */
-    search: function(value, getter_, offset){
-      Array.lastSearchIndex = -1;
-      getter_ = getter(getter_ || $self);
-
-      for (var index = parseInt(offset, 10) || 0, len = this.length; index < len; index++)
-        if (getter_(this[index]) === value)
-          return this[Array.lastSearchIndex = index];
-    },
-
-   /**
-    * @param {*} value
-    * @param {function(object)|string} getter_
-    * @param {number=} offset
-    * @return {*}
-    */
-    lastSearch: function(value, getter_, offset){
-      Array.lastSearchIndex = -1;
-      getter_ = getter(getter_ || $self);
-
-      var len = this.length;
-      var index = isNaN(offset) || offset == null ? len : parseInt(offset, 10);
-
-      for (var i = index > len ? len : index; i-- > 0;)
-        if (getter_(this[i]) === value)
-          return this[Array.lastSearchIndex = i];
-    },
-
-   /**
-    * Binary search in ordered array where getter(item) === value and return position.
-    * When strong parameter equal false insert position returns.
-    * Otherwise returns position of founded item, but -1 if nothing found.
-    * @param {*} value Value search for
-    * @param {function(object)|string=} getter_
-    * @param {boolean=} desc Must be true for reverse sorted arrays.
-    * @param {boolean=} strong If true - returns result only if value found.
-    * @param {number=} left Min left index. If omit it equals to zero.
-    * @param {number=} right Max right index. If omit it equals to array length.
-    * @return {number}
-    */
-    binarySearchPos: function(value, getter_, desc, strong, left, right){
-      if (!this.length)  // empty array check
-        return strong ? -1 : 0;
-
-      getter_ = getter(getter_ || $self);
-      desc = !!desc;
-
-      var pos, compareValue;
-      var l = isNaN(left) ? 0 : left;
-      var r = isNaN(right) ? this.length - 1 : right;
-
-      do
-      {
-        pos = (l + r) >> 1;
-        compareValue = getter_(this[pos]);
-        if (desc ? value > compareValue : value < compareValue)
-          r = pos - 1;
-        else
-          if (desc ? value < compareValue : value > compareValue)
-            l = pos + 1;
-          else
-            return value == compareValue ? pos : (strong ? -1 : 0);  // founded element
-                                                      // -1 returns when it seems as founded element,
-                                                      // but not equal (array item or value looked for have wrong data type for compare)
-      }
-      while (l <= r);
-
-      return strong ? -1 : pos + ((compareValue < value) ^ desc);
-    },
-    binarySearch: function(value, getter){ // position of value
-      return this.binarySearchPos(value, getter, false, true);
-    },
-
-    // collection for
-    add: function(value){
-      return this.indexOf(value) == -1 && !!this.push(value);
-    },
-    remove: function(value){
-      var index = this.indexOf(value);
-      return index != -1 && !!this.splice(index, 1);
-    },
-    has: function(value){
-      return this.indexOf(value) != -1;
-    },
-
-    // misc.
-    merge: function(object){
-      return this.reduce(extend, object || {});
-    },
-    sortAsObject: function(getter_, comparator, desc){
-      getter_ = getter(getter_);
-      desc = desc ? -1 : 1;
-
-      return this
-        .map(function(item, index){
-               return {
-                 i: index,       // index
-                 v: getter_(item) // value
-               };
-             })                                                                           // stability sorting (neccessary only for browsers with no strong sorting, just for sure)
-        .sort(comparator || function(a, b){ return desc * ((a.v > b.v) || -(a.v < b.v) || (a.i > b.i ? 1 : -1)); })
-        .map(function(item){
-               return this[item.i];
-             }, this);
-    },
-    set: function(array){
-      if (this !== array)
-      {
-        this.length = 0;
-        this.push.apply(this, array);
-      }
-      return this;
-    },
-    clear: function(){
-      this.length = 0;
-      return this;
-    }
-  });
-
-  // IE 5.5+ & Opera
-  // when second argument is omited, method set this parameter equal zero (must be equal array length)
-  if (![1, 2].splice(1).length)
-  {
-    var nativeArraySplice = Array.prototype.splice;
-    Array.prototype.splice = function(){
-      var params = arrayFrom(arguments);
-      if (params.length < 2)
-        params[1] = this.length;
-      return nativeArraySplice.apply(this, params);
-    };
-  }
-
- /**
-  * String extensions
-  * @namespace String
-  */
-
-  var STRING_QUOTE_PAIRS = { '<': '>', '[': ']', '(': ')', '{': '}', '\xAB': '\xBB' };
-  var ESCAPE_FOR_REGEXP = /([\/\\\(\)\[\]\?\{\}\|\*\+\-\.\^\$])/g;
-  var FORMAT_REGEXP = /\{([a-z\d_]+)(?::([\.0])(\d+)|:(\?))?\}/gi;
-  var QUOTE_REGEXP_CACHE = {};
-
-  var Entity = {
-    laquo:  '\xAB',
-    raquo:  '\xBB',
-    nbsp:   '\xA0',
-    quot:   '\x22',
-    quote:  '\x22',
-    copy:   '\xA9',
-    shy:    '\xAD',
-    para:   '\xB6',
-    sect:   '\xA7',
-    deg:    '\xB0',
-    mdash:  '\u2014',
-    hellip: '\u2026'
-  };
-
-  function isEmptyString(value){
-    return value == null || String(value) == '';
-  }
-
-  function isNotEmptyString(value){
-    return value != null && String(value) != '';
-  }
-
-  complete(String, {
-    toLowerCase: function(value){
-      return String(value).toLowerCase();
-    },
-    toUpperCase: function(value){
-      return String(value).toUpperCase();
-    },
-    trim: function(value){
-      return String(value).trim();
-    },
-    trimLeft: function(value){
-      return String(value).trimLeft();
-    },
-    trimRight: function(value){
-      return String(value).trimRight();
-    }
-  });
-
-
- /**
-  * @namespace String.prototype
-  */
-  complete(String.prototype, {
-    trimLeft: function(){
-      return this.replace(/^\s+/, '');
-    },
-    trimRight: function(){
-      return this.replace(/\s+$/, '');
-    },
-    // implemented at ECMAScript5
-    trim: function(){
-      return this.trimLeft().trimRight();
-    }
-  });
-
-  extend(String.prototype, {
-   /**
-    * @return {*}
-    */
-    toObject: function(rethrow){
-      // try { return eval('0,' + this) } catch(e) {}
-      // safe solution with no eval:
-      try {
-        return new Function('return 0,' + this)();
-      } catch(e) {
-        if (rethrow)
-          throw e;
-      }
-    },
-    toArray: ('a'.hasOwnProperty('0')
-      ? function(){
-          return arrayFrom(this);
-        }
-      // IE Array and String are not generics
-      : function(){
-          var result = [];
-          var len = this.length;
-          for (var i = 0; i < len; i++)
-            result[i] = this.charAt(i);
-          return result;
-        }
-    ),
-    repeat: function(count){
-      return (new Array(parseInt(count, 10) + 1 || 0)).join(this);
-    },
-    qw: function(){
-      var trimmed = this.trim();
-      return trimmed ? trimmed.split(/\s+/) : [];
-    },
-    forRegExp: function(){
-      return this.replace(ESCAPE_FOR_REGEXP, "\\$1");
-    },
-    format: function(first){
-      var data = arguments;
-
-      if (typeof first == 'object')
-        extend(data, first);
-
-      return this.replace(FORMAT_REGEXP,
-        function(m, key, numFormat, num, noNull){
-          var value = key in data ? data[key] : (noNull ? '' : m);
-          if (numFormat && !isNaN(value))
-          {
-            value = Number(value);
-            return numFormat == '.'
-              ? value.toFixed(num)
-              : value.lead(num);
-          }
-          return value;
-        }
-      );
-    },
-    quote: function(quoteS, quoteE){
-      quoteS = quoteS || '"';
-      quoteE = quoteE || STRING_QUOTE_PAIRS[quoteS] || quoteS;
-      var rx = (quoteS.length == 1 ? quoteS : '') + (quoteE.length == 1 ? quoteE : '');
-      return quoteS + (rx ? this.replace(QUOTE_REGEXP_CACHE[rx] || (QUOTE_REGEXP_CACHE[rx] = new RegExp('[' + rx.forRegExp() + ']', 'g')), "\\$&") : this) + quoteE;
-    },
-    capitalize: function(){
-      return this.charAt(0).toUpperCase() + this.substr(1).toLowerCase();
-    },
-    camelize: function(){
-      return this.replace(/-(.)/g, function(m, chr){ return chr.toUpperCase(); });
-    },
-    dasherize: function(){
-      return this.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); });
-    }
-  });
-
-
-  // Fix some methods
-  // ----------------
-  // IE 5.0+ fix
-  // 1. result array without null elements
-  // 2. when parenthesis uses, result array with no parenthesis value
-  if ('|||'.split(/\|/).length + '|||'.split(/(\|)/).length != 11)
-  {
-    String.prototype.split = function(pattern, count){
-      if (pattern == '' || (pattern && pattern.source == ''))
-        return this.toArray();
-
-      var result = [];
-      var pos = 0;
-      var match;
-
-      if (pattern instanceof RegExp)
-      {
-        if (!pattern.global)
-          pattern = new RegExp(pattern.source, /\/([mi]*)$/.exec(pattern)[1] + 'g');
-
-        while (match = pattern.exec(this))
-        {
-          match[0] = this.substring(pos, match.index);
-          result.push.apply(result, match);
-          pos = pattern.lastIndex;
-        }
-      }
-      else
-      {
-        while ((match = this.indexOf(pattern, pos)) != -1)
-        {
-          result.push(this.substring(pos, match));
-          pos = match + pattern.length;
-        }
-      }
-      result.push(this.substr(pos));
-      return result;
-    };
-  }
-
-  // IE fix
-  if ('12'.substr(-1) != '2')
-  {
-    var nativeStringSubstr = String.prototype.substr;
-    String.prototype.substr = function(start, end){
-      return nativeStringSubstr.call(this, start < 0 ? Math.max(0, this.length + start) : start, end);
-    };
-  }
-
-
- /**
-  * Number extensions
-  * @namespace Number.prototype
-  */
-
-  extend(Number.prototype, {
-    fit: function(min, max){
-      if (!isNaN(min) && this < min)
-        return Number(min);
-      if (!isNaN(max) && this > max)
-        return Number(max);
-      return this;
-    },
-    between: function(min, max){
-      return !isNaN(this) && this >= min && this <= max;
-    },
-    quote: function(start, end){
-      return (this + '').quote(start, end);
-    },
-    toHex: function(){
-      return parseInt(this, 10).toString(16).toUpperCase();
-    },
-    sign: function(){
-      return this < 0 ? -1 : +(this > 0);
-    },
-    base: function(div){
-      return !div || isNaN(div) ? 0 : Math.floor(this/div) * div;
-    },
-    lead: function(len, leadChar){
-      // convert to string and lead first digits by leadChar
-      return (this + '').replace(/\d+/, function(number){
-        // substract number length from desired length converting len to Number and indicates how much leadChars we need to add
-        // here is no isNaN(len) check, because comparation of NaN and a Number is always false
-        return (len -= number.length - 1) > 1 ? new Array(len).join(leadChar || 0) + number : number;
-      });
-    },
-    group: function(len, splitter){
-      return (this + '').replace(/\d+/, function(number){
-        return number.replace(/\d/g, function(m, pos){
-          return !pos + (number.length - pos) % (len || 3) ? m : (splitter || ' ') + m;
-        });
-      });
-    },
-    format: function(prec, gs, prefix, postfix, comma){
-      var res = this.toFixed(prec);
-      if (gs || comma)
-        res = res.replace(/(\d+)(\.?)/, function(m, number, c){
-          return (gs ? Number(number).group(3, gs) : number) + (c ? comma || c : '');
-        });
-      if (prefix)
-        res = res.replace(/^-?/, '$&' + (prefix || ''));
-      return res + (postfix || '');
-    }
-  });
-
-
-  // ============================================
-  // Date (other extensions & fixes moved to date.js)
-  //
-
- /**
-  * @namespace Date
-  */
-
-  complete(Date, {
-   /**
-    * Returns the milliseconds elapsed since 1 January 1970 00:00:00 UTC up until now as a number.
-    * When using now to create timestamps or unique IDs, keep in mind that the resolution may be
-    * 15 milliseconds on Windows, so you could end up with several equal values if now is called
-    * multiple times within a short time span.
-    *
-    * This method was standardized in ECMA-262 5th edition.
-    * @return {number}
-    */
-    now: function(){
-      return +new Date();
-    }
-  });
-
- /**
-  * @namespace Date.prototype
-  */
-
-  if ((new Date).getYear() < 1900)
-  {
-    extend(Date.prototype, {
-      getYear: function(){
-        return this.getFullYear() - 1900;
-      },
-      setYear: function(year){
-        return this.setFullYear(!isNaN(year) && year < 100 ? Number(year) + 1900 : year);
-      }
-    });
-  }
-
-
-  // ============================================
-  // Main part
-  //
-
- /**
-  * Root namespace for basis.js framework.
-  * @namespace basis
-  */
-
-
-  //
-  // Resources
-  //
-
-  var resourceCache = {};
-  var requestResourceCache = {};
-
-  // apply prefetched resources to cache
-  (function(){
-    if (prefetchedResources)
-      for (var key in prefetchedResources)
-        requestResourceCache[pathUtils.resolve(key)] = prefetchedResources[key];
-
-    prefetchedResources = null; // reset prefetched to reduce memory leaks
-  })();
-
-  var getResourceContent = function(url, ignoreCache){
-    if (ignoreCache || !requestResourceCache.hasOwnProperty(url))
-    {
-      var resourceContent = '';
-
-      if (!NODE_ENV)
-      {
-        var req = new XMLHttpRequest();
-        req.open('GET', url, false);
-        // set if-modified-since header since begining prevents cache using;
-        // otherwise browser could never ask server for new file content
-        // and use file content from cache
-        req.setRequestHeader('If-Modified-Since', new Date(0).toGMTString());
-        req.send('');
-
-        if (req.status >= 200 && req.status < 400)
-          resourceContent = req.responseText;
-        else
-        {
-          ;;;consoleMethods.warn('basis.resource: Unable to load ' + url);
-        }
-      }
-      else
-      {
-        if (pathUtils.existsSync(url))
-          resourceContent = require('fs').readFileSync(url, 'utf-8');
-        else
-        {
-          ;;;consoleMethods.warn('basis.resource: Unable to load ' + url);
-        }
-      }
-
-      requestResourceCache[url] = resourceContent;
-    }
-
-    return requestResourceCache[url];
-  };
-
-  // basis.resource  
-  var getResource = function(resourceUrl){
-    resourceUrl = pathUtils.resolve(resourceUrl);
-
-    if (!resourceCache[resourceUrl])
-    {
-      var extWrapper = getResource.extensions[pathUtils.extname(resourceUrl)];
-      var resourceObject;
-      var wrapped = false;
-      var resource = function(){
-        if (extWrapper)
-        {
-          if (!wrapped)
-          {
-            resourceObject = extWrapper(getResourceContent(resourceUrl), resourceUrl);
-            wrapped = true;              
-          }
-          return resourceObject;
-        }
-
-        return getResourceContent(resourceUrl);
-      };
-
-      extend(resource, new Token());
-      extend(resource, {
-        url: resourceUrl,
-        fetch: resource,
-        toString: function(){
-          return '[basis.resource ' + resourceUrl + ']';
-        },
-        update: function(newContent, force){
-          newContent = String(newContent);
-          if (force || newContent != requestResourceCache[resourceUrl])
-          {
-            requestResourceCache[resourceUrl] = newContent;
-            if (extWrapper && wrapped)
-            {
-              if (!extWrapper.updatable)
-                return;
-
-              resourceObject = extWrapper(newContent, resourceUrl);
-            }
-
-            this.apply();
-          }
-        },
-        reload: function(){
-          var oldContent = requestResourceCache[resourceUrl];
-          var newContent = getResourceContent(resourceUrl, true);
-
-          if (newContent != oldContent)
-            this.update(newContent, true);
-        },
-        get: function(source){
-          return source ? getResourceContent(resourceUrl) : resource();
-        }
-      });
-
-      resourceCache[resourceUrl] = resource;
-    }
-
-    return resourceCache[resourceUrl];
-  };
-
-  extend(getResource, {
-    getFiles: function(){
-      var result = [];
-
-      for (var url in resourceCache)
-        result.push(pathUtils.relative(url));
-      
-      return result;
-    },
-    getSource: function(resourceUrl){
-      return getResourceContent(pathUtils.resolve(resourceUrl));
-    },
-    exists: function(resourceUrl){
-      return !!resourceCache.hasOwnProperty(pathUtils.resolve(resourceUrl));
-    },
-    extensions: {
-      '.js': function(resource, url){
-        return runScriptInContext({ exports: {} }, url, resource).exports;
-      },
-      '.json': extend(function(resource, url){
-        if (typeof resource == 'object')
-          return resource;
-
-        var result;
-        try {
-          result = JSON.parse(String(resource));
-        } catch(e) {
-          ;;;consoleMethods.warn('basis.resource: Can\'t parse JSON from ' + url, { url: url, source: String(resource) });
-        }
-        return result || null;
-      }, {
-        updatable: true
-      })
-    }
-  });
-
-
-  var runScriptInContext = function(context, sourceURL, sourceCode){
-    var baseURL = pathUtils.dirname(sourceURL) + '/';
-    var compiledSourceCode = sourceCode;
-
-    if (!context.exports)
-      context.exports = {};
-
-    // compile context function
-    if (typeof compiledSourceCode != 'function')
-      try {
-        compiledSourceCode = new Function('exports, module, basis, global, __filename, __dirname, resource',
-          '"use strict";\n\n' +
-          sourceCode +
-          '//@ sourceURL=' + sourceURL
-        );
-      } catch(e) {
-        ;;;var src = document.createElement('script');src.src = sourceURL;src.async = false;document.head.appendChild(src);document.head.removeChild(src);
-        throw 'Compilation error ' + sourceURL + ':\n' + ('stack' in e ? e.stack : e);
-        //return;
-      }
-
-    // run
-    compiledSourceCode.call(
-      context.exports,
-      context.exports,
-      context,
-      basis,
-      global,
-      sourceURL,
-      baseURL,
-      function(relativePath){
-        return getResource(baseURL + relativePath);
-      }
-    );
-
-    return context;
-  };
 
 
   // ============================================
@@ -1673,76 +834,7 @@
     namespaces[path.join('.')] = cursor;
 
     return cursor;
-  }
-
-  // basis.require
-  var requireNamespace = (function(){
-    if (NODE_ENV)
-    {
-      var requirePath = pathUtils.dirname(module.filename) + '/';
-      var moduleProto = module.constructor.prototype;
-      return function(path){
-        var _compile = moduleProto._compile;
-        var namespace = getNamespace(path);
-
-        // patch node.js module._compile
-        moduleProto._compile = function(content, filename){
-          this.basis = basis;
-          content = 
-            'var basis = module.basis;\n' +
-            'var resource = function(filename){ return basis.require(__dirname + "/" + filename) };\n' +
-            content;
-          _compile.call(extend(this, namespace), content, filename);
-        };
-
-        var exports = require(requirePath + path.replace(/\./g, '/'));
-        namespace.exports = exports;
-        complete(namespace, exports);
-
-        // restore node.js module._compile
-        moduleProto._compile = _compile;
-
-        return exports;
-      };
-    }
-    else
-    {
-      var nsRootPath = config.path;
-      var requested = {};
-
-      return function(namespace, path){
-        if (/[^a-z0-9_\.]/i.test(namespace))
-          throw 'Namespace `' + namespace + '` contains wrong chars.';
-
-        var filename = namespace.replace(/\./g, '/') + '.js';
-        var namespaceRoot = namespace.split('.')[0];
-
-        if (namespaceRoot == namespace)
-          nsRootPath[namespaceRoot] = path || nsRootPath[namespace] || (pathUtils.baseURI + '/');
-
-        var requirePath = nsRootPath[namespaceRoot];
-        if (!namespaces[namespace])
-        {
-          if (!/^(https?|chrome-extension):/.test(requirePath))
-            throw 'Path `' + namespace + '` (' + requirePath + ') can\'t be resolved';
-
-          if (!requested[namespace])
-            requested[namespace] = true;
-          else
-            throw 'Recursive require for ' + namespace;
-
-          var requestUrl = requirePath + filename;
-
-          var ns = getNamespace(namespace);
-          var sourceCode = getResourceContent(requestUrl);
-          runScriptInContext(ns, requestUrl, sourceCode);
-          complete(ns, ns.exports);
-          ;;;ns.filename_ = requestUrl;
-          ;;;ns.source_ = sourceCode;
-        }
-      };
-    }
-  })();
+  }  
 
 
   // ============================================
@@ -2130,13 +1222,868 @@
   })();
 
 
+  // ============================================
+  // Main part
+  //  
+
+ /**
+  * @namespace basis
+  */
+
+ /**
+  * @class
+  */
+  var Token = Class(null, {
+    className: 'basis.Token',
+
+    handlers: null,
+
+    bindingBridge: {
+      attach: function(host, fn, context){
+        return host.attach(fn, context);
+      },
+      detach: function(host, fn, context){
+        return host.detach(fn, context);
+      },
+      get: function(host){
+        return host.get();
+      }
+    },
+
+    set: function(value){
+    },
+    get: function(){
+    },
+
+    attach: function(fn, context){
+      var cursor = this;
+
+      while (cursor = cursor.handlers)
+        if (cursor.fn === fn && cursor.context === context)
+          return false;
+
+      this.handlers = {
+        fn: fn,
+        context: context,
+        handlers: this.handlers
+      };
+
+      return true;
+    },
+    detach: function(fn, context){
+      var cursor = this;
+      var prev = this;
+
+      while (cursor = cursor.handlers)
+      {
+        if (cursor.fn === fn && cursor.context === context)
+        {
+          prev.handlers = cursor.handlers;
+          return true;
+        }
+
+        prev = cursor;
+      }
+
+      return false;
+    },
+
+    apply: function(){
+      var value = this.get();
+      var cursor = this;
+
+      while (cursor = cursor.handlers)
+        cursor.fn.call(cursor.context, value);
+    },
+
+    // destructor
+    destroy: function(){
+      this.handlers = null;
+    }  
+  });  
+
+
+  //
+  // Resources
+  //
+
+  var resourceCache = {};
+  var requestResourceCache = {};
+
+  // apply prefetched resources to cache
+  (function(){
+    if (prefetchedResources)
+      for (var key in prefetchedResources)
+        requestResourceCache[pathUtils.resolve(key)] = prefetchedResources[key];
+
+    prefetchedResources = null; // reset prefetched to reduce memory leaks
+  })();
+
+  var getResourceContent = function(url, ignoreCache){
+    if (ignoreCache || !requestResourceCache.hasOwnProperty(url))
+    {
+      var resourceContent = '';
+
+      if (!NODE_ENV)
+      {
+        var req = new XMLHttpRequest();
+        req.open('GET', url, false);
+        // set if-modified-since header since begining prevents cache using;
+        // otherwise browser could never ask server for new file content
+        // and use file content from cache
+        req.setRequestHeader('If-Modified-Since', new Date(0).toGMTString());
+        req.send('');
+
+        if (req.status >= 200 && req.status < 400)
+          resourceContent = req.responseText;
+        else
+        {
+          ;;;consoleMethods.warn('basis.resource: Unable to load ' + url);
+        }
+      }
+      else
+      {
+        if (pathUtils.existsSync(url))
+          resourceContent = require('fs').readFileSync(url, 'utf-8');
+        else
+        {
+          ;;;consoleMethods.warn('basis.resource: Unable to load ' + url);
+        }
+      }
+
+      requestResourceCache[url] = resourceContent;
+    }
+
+    return requestResourceCache[url];
+  };
+
+  // basis.resource  
+  var getResource = function(resourceUrl){
+    resourceUrl = pathUtils.resolve(resourceUrl);
+
+    if (!resourceCache[resourceUrl])
+    {
+      var extWrapper = getResource.extensions[pathUtils.extname(resourceUrl)];
+      var resourceObject;
+      var wrapped = false;
+      var resource = function(){
+        if (extWrapper)
+        {
+          if (!wrapped)
+          {
+            resourceObject = extWrapper(getResourceContent(resourceUrl), resourceUrl);
+            wrapped = true;              
+          }
+          return resourceObject;
+        }
+
+        return getResourceContent(resourceUrl);
+      };
+
+      extend(resource, new Token());
+      extend(resource, {
+        url: resourceUrl,
+        fetch: resource,
+        toString: function(){
+          return '[basis.resource ' + resourceUrl + ']';
+        },
+        update: function(newContent, force){
+          newContent = String(newContent);
+          if (force || newContent != requestResourceCache[resourceUrl])
+          {
+            requestResourceCache[resourceUrl] = newContent;
+            if (extWrapper && wrapped)
+            {
+              if (!extWrapper.updatable)
+                return;
+
+              resourceObject = extWrapper(newContent, resourceUrl);
+            }
+
+            this.apply();
+          }
+        },
+        reload: function(){
+          var oldContent = requestResourceCache[resourceUrl];
+          var newContent = getResourceContent(resourceUrl, true);
+
+          if (newContent != oldContent)
+            this.update(newContent, true);
+        },
+        get: function(source){
+          return source ? getResourceContent(resourceUrl) : resource();
+        }
+      });
+
+      resourceCache[resourceUrl] = resource;
+    }
+
+    return resourceCache[resourceUrl];
+  };
+
+  extend(getResource, {
+    getFiles: function(){
+      var result = [];
+
+      for (var url in resourceCache)
+        result.push(pathUtils.relative(url));
+      
+      return result;
+    },
+    getSource: function(resourceUrl){
+      return getResourceContent(pathUtils.resolve(resourceUrl));
+    },
+    exists: function(resourceUrl){
+      return !!resourceCache.hasOwnProperty(pathUtils.resolve(resourceUrl));
+    },
+    extensions: {
+      '.js': function(resource, url){
+        return runScriptInContext({ exports: {} }, url, resource).exports;
+      },
+      '.json': extend(function(resource, url){
+        if (typeof resource == 'object')
+          return resource;
+
+        var result;
+        try {
+          result = JSON.parse(String(resource));
+        } catch(e) {
+          ;;;consoleMethods.warn('basis.resource: Can\'t parse JSON from ' + url, { url: url, source: String(resource) });
+        }
+        return result || null;
+      }, {
+        updatable: true
+      })
+    }
+  });
+
+
+  var runScriptInContext = function(context, sourceURL, sourceCode){
+    var baseURL = pathUtils.dirname(sourceURL) + '/';
+    var compiledSourceCode = sourceCode;
+
+    if (!context.exports)
+      context.exports = {};
+
+    // compile context function
+    if (typeof compiledSourceCode != 'function')
+      try {
+        compiledSourceCode = new Function('exports, module, basis, global, __filename, __dirname, resource',
+          '"use strict";\n\n' +
+          sourceCode +
+          '//@ sourceURL=' + sourceURL
+        );
+      } catch(e) {
+        ;;;var src = document.createElement('script');src.src = sourceURL;src.async = false;document.head.appendChild(src);document.head.removeChild(src);
+        throw 'Compilation error ' + sourceURL + ':\n' + ('stack' in e ? e.stack : e);
+        //return;
+      }
+
+    // run
+    compiledSourceCode.call(
+      context.exports,
+      context.exports,
+      context,
+      basis,
+      global,
+      sourceURL,
+      baseURL,
+      function(relativePath){
+        return getResource(baseURL + relativePath);
+      }
+    );
+
+    return context;
+  };
+
+
+  // ============================================
+  // extensions
+  //
+
+  if (config.es5shim)
+    getResource(config.path.basis + 'es5-shim.js').fetch();
+
+  function extendPrototype(Class, methods){
+    iterate(methods, function(methodName, method){
+      Class.prototype[methodName] = function(){
+        // console.log('func', methodName);
+        return method.apply(null, [this].concat(arraySlice.call(arguments)));
+      };
+    });
+  }
+
+ /**
+  * Array extensions
+  * @namespace Array
+  */
+
+  function arrayFrom(object, offset){
+    if (object != null)
+    {
+      var len = object.length;
+
+      if (typeof len == 'undefined')
+        return [object];
+
+      if (!offset)
+        offset = 0;
+
+      if (len - offset > 0)
+      {
+        for (var result = [], k = 0, i = offset; i < len;)
+          result[k++] = object[i++];
+        return result;
+      }
+    }
+
+    return [];
+  }
+
+  function createArray(length, fillValue, thisObject){
+    var result = [];
+    var isFunc = typeof fillValue == 'function';
+
+    for (var i = 0; i < length; i++)
+      result[i] = isFunc ? fillValue.call(thisObject, i, result) : fillValue;
+
+    return result;
+  }
+
+  var arraySlice = Array.prototype.slice;
+  var arrayConcat = Array.prototype.concat;
+  var arraySplice = Array.prototype.splice;
+
+  var arrayExt = {
+    // extractors
+    flatten: function(array){
+      return arrayConcat.apply([], array);
+    },
+    repeat: function(array, count){
+      return createArray(parseInt(count, 10) || 0, array).flatten();
+    },
+ 
+    // getters
+    item: function(array, index){
+      index = parseInt(index || 0, 10);
+      return array[index >= 0 ? index : array.length + index];
+    },
+ 
+    // search
+   /**
+    * Returns first item where getter(item) === value
+    * @example
+    *   var list = [{ a: 1, b: 2 }, { a: 2, b: 3 }, { a: 1, b: 4}, { a: 5 }];
+    *
+    *   // search for item where object.a == 2
+    *   var result = list.search(5, 'a');
+    *     // result -> { a: 5 }
+    *
+    *   // search for where a == 1 && b > 2
+    *   var result = list.search(true, function(object){ return object.a == 1 && object.b > 2 });
+    *     // result -> { a: 1, b: 3 }
+    *
+    *   // search all items where a == 1
+    *   var result = new Array();
+    *   var item = list.search(1, 'a');
+    *   while (item)
+    *   {
+    *     result.push(item)
+    *     item = list.search(1, 'a', Array.lastSearchIndex + 1);
+    *                                   // lastSearchIndex store index of last founded item
+    *   }
+    *     // result -> [{ a: 1, b: 2 }, { a: 1, b: 4}]
+    *
+    *   // but if you need all items of array with filtered by condition use Array#filter method instead
+    *   var result = list.filter(basis.getter('a == 1'));
+    *
+    * @param {Array} array
+    * @param {*} value
+    * @param {function(object)|string} getter_
+    * @param {number=} offset
+    * @return {*}
+    */
+    search: function(array, value, getter_, offset){
+      Array.lastSearchIndex = -1;
+      getter_ = getter(getter_ || $self);
+ 
+      for (var i = parseInt(offset, 10) || 0, len = array.length; i < len; i++)
+        if (getter_(array[i]) === value)
+          return array[Array.lastSearchIndex = i];
+    },
+ 
+   /**
+    * @param {Array} array
+    * @param {*} value
+    * @param {function(object)|string} getter_
+    * @param {number=} offset
+    * @return {*}
+    */
+    lastSearch: function(array, value, getter_, offset){
+      Array.lastSearchIndex = -1;
+      getter_ = getter(getter_ || $self);
+ 
+      var len = array.length;
+      var index = isNaN(offset) || offset == null ? len : parseInt(offset, 10);
+ 
+      for (var i = index > len ? len : index; i-- > 0;)
+        if (getter_(array[i]) === value)
+          return array[Array.lastSearchIndex = i];
+    },
+ 
+   /**
+    * Binary search in ordered array where getter(item) === value and return position.
+    * When strong parameter equal false insert position returns.
+    * Otherwise returns position of founded item, but -1 if nothing found.
+    * @param {Array} array
+    * @param {*} value Value search for
+    * @param {function(object)|string=} getter_
+    * @param {boolean=} desc Must be true for reverse sorted arrays.
+    * @param {boolean=} strong If true - returns result only if value found.
+    * @param {number=} left Min left index. If omit it equals to zero.
+    * @param {number=} right Max right index. If omit it equals to array length.
+    * @return {number}
+    */
+    binarySearchPos: function(array, value, getter_, desc, strong, left, right){
+      if (!array.length)  // empty array check
+        return strong ? -1 : 0;
+ 
+      getter_ = getter(getter_ || $self);
+      desc = !!desc;
+ 
+      var pos, compareValue;
+      var l = isNaN(left) ? 0 : left;
+      var r = isNaN(right) ? array.length - 1 : right;
+ 
+      do
+      {
+        pos = (l + r) >> 1;
+        compareValue = getter_(array[pos]);
+        if (desc ? value > compareValue : value < compareValue)
+          r = pos - 1;
+        else
+          if (desc ? value < compareValue : value > compareValue)
+            l = pos + 1;
+          else
+            return value == compareValue ? pos : (strong ? -1 : 0);  // founded element
+                                                      // -1 returns when it seems as founded element,
+                                                      // but not equal (array item or value looked for have wrong data type for compare)
+      }
+      while (l <= r);
+ 
+      return strong ? -1 : pos + ((compareValue < value) ^ desc);
+    },
+    binarySearch: function(array, value, getter){ // position of value
+      return array.binarySearchPos(value, getter, false, true);
+    },
+ 
+    // collection for
+    add: function(array, value){
+      return array.indexOf(value) == -1 && !!array.push(value);
+    },
+    remove: function(array, value){
+      var index = array.indexOf(value);
+      return index != -1 && !!array.splice(index, 1);
+    },
+    has: function(array, value){
+      return array.indexOf(value) != -1;
+    },
+ 
+    // misc.
+    merge: function(array, object){
+      return array.reduce(extend, object || {});
+    },
+    sortAsObject: function(array, getter_, comparator, desc){
+      getter_ = getter(getter_);
+      desc = desc ? -1 : 1;
+ 
+      return array
+        .map(function(item, index){
+           return {
+             i: index,        // index
+             v: getter_(item) // value
+           };
+         })
+        .sort(comparator || function(a, b){           // stability sorting (neccessary only for browsers with no strong sorting, just for sure)
+           return desc * ((a.v > b.v) || -(a.v < b.v) || (a.i > b.i ? 1 : -1));
+         })
+        .map(function(item){
+           return this[item.i];
+         }, array);
+    },
+    set: function(array, source){
+      if (array !== source)
+      {
+        array.length = 0;
+        array.push.apply(array, source);
+      }
+      return array;
+    },
+    clear: function(array){
+      array.length = 0;
+      return array;
+    }
+  };
+
+  extendPrototype(Array, arrayExt);
+
+  // IE 5.5+ & Opera
+  // when second argument is omited, method set this parameter equal zero (must be equal array length)
+  if (![1, 2].splice(1).length)
+  {
+    Array.prototype.splice = function(){
+      var params = arrayFrom(arguments);
+      if (params.length < 2)
+        params[1] = this.length;
+      return arraySplice.apply(this, params);
+    };
+  }
+
+
+ /**
+  * String extensions
+  * @namespace String
+  */
+
+  var STRING_QUOTE_PAIRS = { '<': '>', '[': ']', '(': ')', '{': '}', '\xAB': '\xBB' };
+  var ESCAPE_FOR_REGEXP = /([\/\\\(\)\[\]\?\{\}\|\*\+\-\.\^\$])/g;
+  var FORMAT_REGEXP = /\{([a-z\d_]+)(?::([\.0])(\d+)|:(\?))?\}/gi;
+  var QUOTE_REGEXP_CACHE = {};
+
+  var Entity = {
+    laquo:  '\xAB',
+    raquo:  '\xBB',
+    nbsp:   '\xA0',
+    quot:   '\x22',
+    quote:  '\x22',
+    copy:   '\xA9',
+    shy:    '\xAD',
+    para:   '\xB6',
+    sect:   '\xA7',
+    deg:    '\xB0',
+    mdash:  '\u2014',
+    hellip: '\u2026'
+  };
+
+  function isEmptyString(value){
+    return value == null || String(value) == '';
+  }
+
+  function isNotEmptyString(value){
+    return value != null && String(value) != '';
+  }
+
+  complete(String, {
+    toLowerCase: function(value){
+      return String(value).toLowerCase();
+    },
+    toUpperCase: function(value){
+      return String(value).toUpperCase();
+    },
+    trim: function(value){
+      return String(value).trim();
+    },
+    trimLeft: function(value){
+      return String(value).trimLeft();
+    },
+    trimRight: function(value){
+      return String(value).trimRight();
+    }
+  });
+
+
+ /**
+  * @namespace String.prototype
+  */
+  complete(String.prototype, {
+    trimLeft: function(){
+      return this.replace(/^\s+/, '');
+    },
+    trimRight: function(){
+      return this.replace(/\s+$/, '');
+    }
+  });
+
+  extend(String.prototype, {
+   /**
+    * @return {*}
+    */
+    toObject: function(rethrow){
+      // try { return eval('0,' + this) } catch(e) {}
+      // safe solution with no eval:
+      try {
+        return new Function('return 0,' + this)();
+      } catch(e) {
+        if (rethrow)
+          throw e;
+      }
+    },
+    toArray: ('a'.hasOwnProperty('0')
+      ? function(){
+          return arrayFrom(this);
+        }
+      // IE Array and String are not generics
+      : function(){
+          var result = [];
+          var len = this.length;
+          for (var i = 0; i < len; i++)
+            result[i] = this.charAt(i);
+          return result;
+        }
+    ),
+    repeat: function(count){
+      return (new Array(parseInt(count, 10) + 1 || 0)).join(this);
+    },
+    qw: function(){
+      var trimmed = this.trim();
+      return trimmed ? trimmed.split(/\s+/) : [];
+    },
+    forRegExp: function(){
+      return this.replace(ESCAPE_FOR_REGEXP, "\\$1");
+    },
+    format: function(first){
+      var data = arguments;
+
+      if (typeof first == 'object')
+        extend(data, first);
+
+      return this.replace(FORMAT_REGEXP,
+        function(m, key, numFormat, num, noNull){
+          var value = key in data ? data[key] : (noNull ? '' : m);
+          if (numFormat && !isNaN(value))
+          {
+            value = Number(value);
+            return numFormat == '.'
+              ? value.toFixed(num)
+              : value.lead(num);
+          }
+          return value;
+        }
+      );
+    },
+    quote: function(quoteS, quoteE){
+      quoteS = quoteS || '"';
+      quoteE = quoteE || STRING_QUOTE_PAIRS[quoteS] || quoteS;
+      var rx = (quoteS.length == 1 ? quoteS : '') + (quoteE.length == 1 ? quoteE : '');
+      return quoteS + (rx ? this.replace(QUOTE_REGEXP_CACHE[rx] || (QUOTE_REGEXP_CACHE[rx] = new RegExp('[' + rx.forRegExp() + ']', 'g')), "\\$&") : this) + quoteE;
+    },
+    capitalize: function(){
+      return this.charAt(0).toUpperCase() + this.substr(1).toLowerCase();
+    },
+    camelize: function(){
+      return this.replace(/-(.)/g, function(m, chr){ return chr.toUpperCase(); });
+    },
+    dasherize: function(){
+      return this.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); });
+    }
+  });
+
+
+  // Fix some methods
+  // ----------------
+  // IE 5.0+ fix
+  // 1. result array without null elements
+  // 2. when parenthesis uses, result array with no parenthesis value
+  if ('|||'.split(/\|/).length + '|||'.split(/(\|)/).length != 11)
+  {
+    String.prototype.split = function(pattern, count){
+      if (pattern == '' || (pattern && pattern.source == ''))
+        return this.toArray();
+
+      var result = [];
+      var pos = 0;
+      var match;
+
+      if (pattern instanceof RegExp)
+      {
+        if (!pattern.global)
+          pattern = new RegExp(pattern.source, /\/([mi]*)$/.exec(pattern)[1] + 'g');
+
+        while (match = pattern.exec(this))
+        {
+          match[0] = this.substring(pos, match.index);
+          result.push.apply(result, match);
+          pos = pattern.lastIndex;
+        }
+      }
+      else
+      {
+        while ((match = this.indexOf(pattern, pos)) != -1)
+        {
+          result.push(this.substring(pos, match));
+          pos = match + pattern.length;
+        }
+      }
+      result.push(this.substr(pos));
+      return result;
+    };
+  }
+
+  // IE fix
+  if ('12'.substr(-1) != '2')
+  {
+    var nativeStringSubstr = String.prototype.substr;
+    String.prototype.substr = function(start, end){
+      return nativeStringSubstr.call(this, start < 0 ? Math.max(0, this.length + start) : start, end);
+    };
+  }
+
+
+ /**
+  * Number extensions
+  * @namespace Number.prototype
+  */
+
+  extend(Number.prototype, {
+    fit: function(min, max){
+      if (!isNaN(min) && this < min)
+        return Number(min);
+      if (!isNaN(max) && this > max)
+        return Number(max);
+      return this;
+    },
+    between: function(min, max){
+      return !isNaN(this) && this >= min && this <= max;
+    },
+    quote: function(start, end){
+      return (this + '').quote(start, end);
+    },
+    toHex: function(){
+      return parseInt(this, 10).toString(16).toUpperCase();
+    },
+    sign: function(){
+      return this < 0 ? -1 : +(this > 0);
+    },
+    base: function(div){
+      return !div || isNaN(div) ? 0 : Math.floor(this/div) * div;
+    },
+    lead: function(len, leadChar){
+      // convert to string and lead first digits by leadChar
+      return (this + '').replace(/\d+/, function(number){
+        // substract number length from desired length converting len to Number and indicates how much leadChars we need to add
+        // here is no isNaN(len) check, because comparation of NaN and a Number is always false
+        return (len -= number.length - 1) > 1 ? new Array(len).join(leadChar || 0) + number : number;
+      });
+    },
+    group: function(len, splitter){
+      return (this + '').replace(/\d+/, function(number){
+        return number.replace(/\d/g, function(m, pos){
+          return !pos + (number.length - pos) % (len || 3) ? m : (splitter || ' ') + m;
+        });
+      });
+    },
+    format: function(prec, gs, prefix, postfix, comma){
+      var res = this.toFixed(prec);
+      if (gs || comma)
+        res = res.replace(/(\d+)(\.?)/, function(m, number, c){
+          return (gs ? Number(number).group(3, gs) : number) + (c ? comma || c : '');
+        });
+      if (prefix)
+        res = res.replace(/^-?/, '$&' + (prefix || ''));
+      return res + (postfix || '');
+    }
+  });
+
+
+ /**
+  * Date extensions
+  * @namespace Date.prototype
+  */
+
+  if ((new Date).getYear() < 1900)
+  {
+    extend(Date.prototype, {
+      getYear: function(){
+        return this.getFullYear() - 1900;
+      },
+      setYear: function(year){
+        return this.setFullYear(!isNaN(year) && year < 100 ? Number(year) + 1900 : year);
+      }
+    });
+  }
+
+
+  // ===============================
+  // core functions
+  //
+
+  // basis.require
+  var basisRequire = (function(){
+    if (NODE_ENV)
+    {
+      var requirePath = pathUtils.dirname(module.filename) + '/';
+      var moduleProto = module.constructor.prototype;
+      return function(path){
+        var _compile = moduleProto._compile;
+        var namespace = getNamespace(path);
+
+        // patch node.js module._compile
+        moduleProto._compile = function(content, filename){
+          this.basis = basis;
+          content = 
+            'var basis = module.basis;\n' +
+            'var resource = function(filename){ return basis.require(__dirname + "/" + filename) };\n' +
+            content;
+          _compile.call(extend(this, namespace), content, filename);
+        };
+
+        var exports = require(requirePath + path.replace(/\./g, '/'));
+        namespace.exports = exports;
+        complete(namespace, exports);
+
+        // restore node.js module._compile
+        moduleProto._compile = _compile;
+
+        return exports;
+      };
+    }
+    else
+    {
+      var nsRootPath = config.path;
+      var requested = {};
+
+      return function(namespace, path){
+        if (/[^a-z0-9_\.]/i.test(namespace))
+          throw 'Namespace `' + namespace + '` contains wrong chars.';
+
+        var filename = namespace.replace(/\./g, '/') + '.js';
+        var namespaceRoot = namespace.split('.')[0];
+
+        if (namespaceRoot == namespace)
+          nsRootPath[namespaceRoot] = path || nsRootPath[namespace] || (pathUtils.baseURI + '/');
+
+        var requirePath = nsRootPath[namespaceRoot];
+        if (!namespaces[namespace])
+        {
+          if (!/^(https?|chrome-extension):/.test(requirePath))
+            throw 'Path `' + namespace + '` (' + requirePath + ') can\'t be resolved';
+
+          if (!requested[namespace])
+            requested[namespace] = true;
+          else
+            throw 'Recursive require for ' + namespace;
+
+          var requestUrl = requirePath + filename;
+
+          var ns = getNamespace(namespace);
+          var sourceCode = getResourceContent(requestUrl);
+          runScriptInContext(ns, requestUrl, sourceCode);
+          complete(ns, ns.exports);
+          ;;;ns.filename_ = requestUrl;
+          ;;;ns.source_ = sourceCode;
+        }
+      };
+    }
+  })();
+
+
  /**
   * Attach document ready handlers
   * @function
   * @param {function()} handler 
   * @param {*} thisObject Context for handler
   */
-  var ready = (function(){
+  var domReady = (function(){
     // Matthias Miller/Mark Wubben/Paul Sowden/Dean Edwards/John Resig/Roman Dvornov
 
     var fired = !document || document.readyState == 'complete';
@@ -2275,79 +2222,6 @@
   })();
 
 
- /**
-  * @class
-  */
-  var Token = Class(null, {
-    className: 'basis.Token',
-
-    handlers: null,
-
-    bindingBridge: {
-      attach: function(host, fn, context){
-        return host.attach(fn, context);
-      },
-      detach: function(host, fn, context){
-        return host.detach(fn, context);
-      },
-      get: function(host){
-        return host.get();
-      }
-    },
-
-    set: function(value){
-    },
-    get: function(){
-    },
-
-    attach: function(fn, context){
-      var cursor = this;
-
-      while (cursor = cursor.handlers)
-        if (cursor.fn === fn && cursor.context === context)
-          return false;
-
-      this.handlers = {
-        fn: fn,
-        context: context,
-        handlers: this.handlers
-      };
-
-      return true;
-    },
-    detach: function(fn, context){
-      var cursor = this;
-      var prev = this;
-
-      while (cursor = cursor.handlers)
-      {
-        if (cursor.fn === fn && cursor.context === context)
-        {
-          prev.handlers = cursor.handlers;
-          return true;
-        }
-
-        prev = cursor;
-      }
-
-      return false;
-    },
-
-    apply: function(){
-      var value = this.get();
-      var cursor = this;
-
-      while (cursor = cursor.handlers)
-        cursor.fn.call(cursor.context, value);
-    },
-
-    // destructor
-    destroy: function(){
-      this.handlers = null;
-    }  
-  });
-
-
   //
   // export names
   //
@@ -2359,14 +2233,14 @@
     platformFeature: {},
 
     namespace: getNamespace,
-    require: requireNamespace,
+    require: basisRequire,
     resource: getResource,
     asset: function(url){
       return url;
     },
 
     getter: getter,
-    ready: ready,
+    ready: domReady,
 
     Class: Class,
     Token: Token,
@@ -2414,10 +2288,10 @@
       runOnce: runOnce,
       body: functionBody
     },
-    array: extend(arrayFrom, {
+    array: extend(arrayFrom, extend(arrayExt, {
       from: arrayFrom,
       create: createArray
-    }),
+    })),
     string: {
       entity: Entity,
       isEmpty: isEmptyString,
@@ -2448,6 +2322,6 @@
   //
 
   if (config.autoload)
-    requireNamespace(config.autoload);
+    basisRequire(config.autoload);
 
 })(this);
