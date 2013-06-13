@@ -13,9 +13,12 @@
  *
  * This file should be loaded first.
  *
- * Content overview:
- * - Buildin class extensions and fixes
- *   o Object (static class members only)
+ * Table of content:
+ * - util functions
+ * - console method wrappers
+ * - path utils
+ * - config load
+ * - buildin class extensions and fixes
  *   o Function
  *   o Array
  *   o String
@@ -23,10 +26,10 @@
  *   o Date (more extensions for Date in src/basis/date.js)
  * - namespace sheme (module subsystem)
  * - resouces
- * - basis.Class namespace (provides inheritance)
+ * - basis.Class namespace
  * - cleaner
  * - Token
- * - basis.ready (on load handler)
+ * - basis.ready
  */
 
 // Define global scope: `window` in browser, or `global` on node.js
@@ -589,6 +592,180 @@
   }
 
 
+  // ============================================
+  // safe console method wrappers
+  //
+
+  var consoleMethods = (function(){
+    var methods = {
+      log: $undef,
+      info: $undef,
+      warn: $undef
+    };
+
+    if (typeof console != 'undefined')
+      iterate(methods, function(methodName){
+        methods[methodName] = 'bind' in Function.prototype && typeof console[methodName] == 'function'
+          ? Function.prototype.bind.call(console[methodName], console)
+            // ie8 and lower, it's also more safe when Function.prototype.bind defined
+            // by other libraries (like es5-shim)
+          : function(){
+              Function.prototype.apply.call(console[methodName], console, arguments)
+            };
+      });
+
+    return methods;
+  })();
+
+  
+  // ============================================
+  // path utils
+  //
+
+  var NODE_ENV = typeof process != 'undefined' && process.versions && process.versions.node;
+  var pathUtils = (function(){
+    var utils;
+
+    if (NODE_ENV)
+    {
+      utils = slice(require('path'), [
+        'normalize',
+        'dirname',
+        'extname',
+        'basename',
+        'resolve',
+        'relative'
+      ]);
+
+      var existsSync = require('fs').existsSync;
+      if (existsSync)
+        utils.existsSync = existsSync;
+    }
+    else
+    {
+      var linkEl = document.createElement('A');
+
+      utils = {
+        normalize: function(path){
+          linkEl.href = path || '';
+          //linkEl.href = linkEl.pathname;
+          return linkEl.href.substring(0, linkEl.href.length - linkEl.hash.length - linkEl.search.length);
+        },
+        dirname: function(path){
+          return this.normalize(path).replace(/\/[^\/]*$/, '');
+        },
+        extname: function(path){
+          var ext = String(path).match(/\.[a-z0-9_\-]+$/);
+          return ext ? ext[0] : '';
+        },
+        basename: function(path, ext){
+          var filename = String(path).match(/[^\\\/]*$/);
+          filename = filename ? filename[0] : '';
+
+          if (ext == this.extname(filename))
+            filename = filename.substring(0, filename.length - ext.length);
+
+          return filename;
+        },
+        resolve: function(path){  // TODO: more compliant with node.js
+          return this.normalize(path);
+        },
+        relative: function(path){
+          var abs = this.normalize(path).split(/\//);
+          var loc = this.baseURI.split(/\//);
+          var i = 0;
+
+          while (abs[i] == loc[i] && typeof loc[i] == 'string')
+            i++;
+
+          var prefix = '';
+          for (var j = loc.length - i; j >= 0; j--)
+            prefix += '../';
+
+          return prefix + abs.slice(i).join('/');
+        }
+      };
+    }
+
+    utils.baseURI = utils.dirname(utils.resolve());
+
+    return utils;
+  })();
+
+
+  // =============================================
+  // apply config
+  //
+
+  var config = (function(){
+    var basisUrl = '';
+    var config = {
+      'es5Shim': true,
+      'legacy': true      // TODO: set to false by default
+    };
+
+    if (NODE_ENV)
+    {
+      // node.js env
+      basisUrl = __dirname;
+    }
+    else
+    {
+      // browser env
+      var scripts = document.getElementsByTagName('script');
+      for (var i = 0, scriptEl; scriptEl = scripts[i]; i++)
+      {
+        var configAttrNode = scriptEl.getAttributeNode('data-basis-config') || scriptEl.getAttributeNode('basis-config')
+        if (configAttrNode)
+        {
+          try {
+            extend(config, Function('return{' + configAttrNode.nodeValue + '}')() || {});
+          } catch (e) {
+            ;;;consoleMethods.warn('basis.js config parse fault: ' + e);
+          }
+
+          basisUrl = pathUtils.dirname(scriptEl.src);
+
+          break;
+        }
+      }
+    }
+
+    config.path = extend(config.path || {}, {
+      basis: basisUrl
+    });
+      
+    var autoload = config.autoload;
+    config.autoload = false;
+    if (autoload)
+    {
+      var m = autoload.match(/^((?:[^\/]*\/)*)([a-z$_][a-z0-9$_]*)((?:\.[a-z$_][a-z0-9$_]*)*)$/i);
+      if (m)
+      {
+        if (m[2] != 'basis')
+        {
+          config.autoload = m[2] + (m[3] || '');
+          if (m[1])
+            config.path[m[2]] = m[1].replace(/\/$/, '');
+        }
+        else
+        {
+          ;;;consoleMethods.warn('value for autoload can\'t be `basis` (setting ignored): ' + autoload);
+        }
+      }
+      else
+      {
+        ;;;consoleMethods.warn('wrong autoload value (setting ignored): ' + autoload);
+      }
+    }
+
+    for (var key in config.path)
+      config.path[key] = pathUtils.resolve(config.path[key] + '/');
+
+    return config;
+  })();
+
+
  /**
   * @namespace Function.prototype
   */
@@ -615,32 +792,7 @@
             return fn.apply(thisObject, arguments);
           };
     }
-  });
-
-
-  //
-  // safe console method wrappers
-  //
-  var consoleMethods = (function(){
-    var methods = {
-      log: $undef,
-      info: $undef,
-      warn: $undef
-    };
-
-    if (typeof console != 'undefined')
-      iterate(methods, function(methodName){
-        methods[methodName] = typeof console[methodName] == 'function'
-          ? Function.prototype.bind.call(console[methodName], console)
-            // ie8 and lower, it's also more safe when Function.prototype.bind defined
-            // by other libraries (like es5-shim)
-          : function(){
-              Function.prototype.apply.call(console[methodName], console, arguments)
-            };
-      });
-
-    return methods;
-  })();
+  });  
 
 
  /**
@@ -1256,154 +1408,6 @@
   * Root namespace for basis.js framework.
   * @namespace basis
   */
-
-  // ============================================
-  // path
-  //
-
-  var NODE_ENV = typeof process != 'undefined' && process.versions && process.versions.node;
-  var pathUtils = (function(){
-    var utils;
-
-    if (NODE_ENV)
-    {
-      utils = slice(require('path'), [
-        'normalize',
-        'dirname',
-        'extname',
-        'basename',
-        'resolve',
-        'relative'
-      ]);
-
-      var existsSync = require('fs').existsSync;
-      if (existsSync)
-        utils.existsSync = existsSync;
-    }
-    else
-    {
-      var linkEl = document.createElement('A');
-
-      utils = {
-        normalize: function(path){
-          linkEl.href = path || '';
-          //linkEl.href = linkEl.pathname;
-          return linkEl.href.substring(0, linkEl.href.length - linkEl.hash.length - linkEl.search.length);
-        },
-        dirname: function(path){
-          return this.normalize(path).replace(/\/[^\/]*$/, '');
-        },
-        extname: function(path){
-          var ext = String(path).match(/\.[a-z0-9_\-]+$/);
-          return ext ? ext[0] : '';
-        },
-        basename: function(path, ext){
-          var filename = String(path).match(/[^\\\/]*$/);
-          filename = filename ? filename[0] : '';
-
-          if (ext == this.extname(filename))
-            filename = filename.substring(0, filename.length - ext.length);
-
-          return filename;
-        },
-        resolve: function(path){  // TODO: more compliant with node.js
-          return this.normalize(path);
-        },
-        relative: function(path){
-          var abs = this.normalize(path).split(/\//);
-          var loc = this.baseURI.split(/\//);
-          var i = 0;
-
-          while (abs[i] == loc[i] && typeof loc[i] == 'string')
-            i++;
-
-          var prefix = '';
-          for (var j = loc.length - i; j >= 0; j--)
-            prefix += '../';
-
-          return prefix + abs.slice(i).join('/');
-        }
-      };
-    }
-
-    utils.baseURI = utils.dirname(utils.resolve());
-
-    return utils;
-  })();
-
-
-  //
-  // apply config
-  //
-
-  var config = (function(){
-
-    var basisUrl = '';
-    var config = {
-      'es5Shim': true,
-      'legacy': true      // TODO: set to false by default
-    };
-
-    if (NODE_ENV)
-    {
-      // node.js env
-      basisUrl = __dirname;
-    }
-    else
-    {
-      // browser env
-      var scripts = document.getElementsByTagName('script');
-      for (var i = 0, scriptEl; scriptEl = scripts[i]; i++)
-      {
-        var configAttrNode = scriptEl.getAttributeNode('data-basis-config') || scriptEl.getAttributeNode('basis-config')
-        if (configAttrNode)
-        {
-          try {
-            extend(config, Function('return{' + configAttrNode.nodeValue + '}')() || {});
-          } catch (e) {
-            ;;;consoleMethods.warn('basis.js config parse fault: ' + e);
-          }
-
-          basisUrl = pathUtils.dirname(scriptEl.src);
-
-          break;
-        }
-      }
-    }
-
-    config.path = extend(config.path || {}, {
-      basis: basisUrl
-    });
-      
-    var autoload = config.autoload;
-    config.autoload = false;
-    if (autoload)
-    {
-      var m = autoload.match(/^((?:[^\/]*\/)*)([a-z$_][a-z0-9$_]*)((?:\.[a-z$_][a-z0-9$_]*)*)$/i);
-      if (m)
-      {
-        if (m[2] != 'basis')
-        {
-          config.autoload = m[2] + (m[3] || '');
-          if (m[1])
-            config.path[m[2]] = m[1].replace(/\/$/, '');
-        }
-        else
-        {
-          ;;;consoleMethods.warn('value for autoload can\'t be `basis` (setting ignored): ' + autoload);
-        }
-      }
-      else
-      {
-        ;;;consoleMethods.warn('wrong autoload value (setting ignored): ' + autoload);
-      }
-    }
-
-    for (var key in config.path)
-      config.path[key] = pathUtils.resolve(config.path[key] + '/');
-
-    return config;
-  })();  
 
 
   //
