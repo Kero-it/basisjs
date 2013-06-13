@@ -534,9 +534,10 @@
     if (func.basisDocFD_)
       return func.basisDocFD_;
 
-    var m = func.toString().match(/^\s*function(\s+\S+)?\s*\((\s*(?:\S+|\/\*[^*]+\*\/)(\s*(?:,\s*\S+|\/\*[^*]+\*\/))*\s*)?\)/);
+    var fnSource = Function.prototype.toString.call(func);
+    var m = fnSource.match(/^\s*function(\s+\S+)?\s*\((\s*(?:\S+|\/\*[^*]+\*\/)(\s*(?:,\s*\S+|\/\*[^*]+\*\/))*\s*)?\)/);
     if (!m)
-      basis.dev.log('Function parse error: ' + func.toString());
+      basis.dev.log('Function parse error: ' + fnSource);
 
     var name = String(m[1] || 'anonymous').trim();
     var args = String(m[2] || '').replace(/\s*,\s*/g, ', ');
