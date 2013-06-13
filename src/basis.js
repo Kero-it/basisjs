@@ -1745,25 +1745,10 @@
   * @namespace String
   */
 
-  var STRING_QUOTE_PAIRS = { '<': '>', '[': ']', '(': ')', '{': '}', '\xAB': '\xBB' };
   var ESCAPE_FOR_REGEXP = /([\/\\\(\)\[\]\?\{\}\|\*\+\-\.\^\$])/g;
   var FORMAT_REGEXP = /\{([a-z\d_]+)(?::([\.0])(\d+)|:(\?))?\}/gi;
+  var STRING_QUOTE_PAIRS = { '<': '>', '[': ']', '(': ')', '{': '}', '\xAB': '\xBB' };
   var QUOTE_REGEXP_CACHE = {};
-
-  var Entity = {
-    laquo:  '\xAB',
-    raquo:  '\xBB',
-    nbsp:   '\xA0',
-    quot:   '\x22',
-    quote:  '\x22',
-    copy:   '\xA9',
-    shy:    '\xAD',
-    para:   '\xB6',
-    sect:   '\xA7',
-    deg:    '\xB0',
-    mdash:  '\u2014',
-    hellip: '\u2026'
-  };
 
   function isEmptyString(value){
     return value == null || String(value) == '';
@@ -1773,81 +1758,52 @@
     return value != null && String(value) != '';
   }
 
-  complete(String, {
-    toLowerCase: function(value){
-      return String(value).toLowerCase();
-    },
-    toUpperCase: function(value){
-      return String(value).toUpperCase();
-    },
-    trim: function(value){
-      return String(value).trim();
-    },
-    trimLeft: function(value){
-      return String(value).trimLeft();
-    },
-    trimRight: function(value){
-      return String(value).trimRight();
-    }
-  });
-
 
  /**
   * @namespace String.prototype
   */
-  complete(String.prototype, {
-    trimLeft: function(){
-      return this.replace(/^\s+/, '');
-    },
-    trimRight: function(){
-      return this.replace(/\s+$/, '');
-    }
-  });
 
-  extend(String.prototype, {
-   /**
-    * @return {*}
-    */
-    toObject: function(rethrow){
-      // try { return eval('0,' + this) } catch(e) {}
+  var stringExt = {
+    toObject: function(string, rethrow){
+      // try { return eval('0,' + string) } catch(e) {}
       // safe solution with no eval:
       try {
-        return new Function('return 0,' + this)();
+        return new Function('return 0,' + string)();
       } catch(e) {
         if (rethrow)
           throw e;
       }
     },
     toArray: ('a'.hasOwnProperty('0')
-      ? function(){
-          return arrayFrom(this);
+      ? function(string){
+          return arrayFrom(string);
         }
       // IE Array and String are not generics
-      : function(){
+      : function(string){
           var result = [];
-          var len = this.length;
+          var len = string.length;
           for (var i = 0; i < len; i++)
-            result[i] = this.charAt(i);
+            result[i] = string.charAt(i);
           return result;
         }
     ),
-    repeat: function(count){
-      return (new Array(parseInt(count, 10) + 1 || 0)).join(this);
+    forRegExp: function(string){
+      return string.replace(ESCAPE_FOR_REGEXP, "\\$1");
     },
-    qw: function(){
-      var trimmed = this.trim();
+    repeat: function(string, count){
+      return (new Array(parseInt(count, 10) + 1 || 0)).join(string);
+    },
+    qw: function(string){
+      var trimmed = string.trim();
       return trimmed ? trimmed.split(/\s+/) : [];
     },
-    forRegExp: function(){
-      return this.replace(ESCAPE_FOR_REGEXP, "\\$1");
-    },
-    format: function(first){
-      var data = arguments;
+    format: function(string, first){
+      var data = arraySlice.call(arguments, 1);
 
       if (typeof first == 'object')
         extend(data, first);
 
-      return this.replace(FORMAT_REGEXP,
+      return string.replace(FORMAT_REGEXP,
         function(m, key, numFormat, num, noNull){
           var value = key in data ? data[key] : (noNull ? '' : m);
           if (numFormat && !isNaN(value))
@@ -1861,22 +1817,44 @@
         }
       );
     },
-    quote: function(quoteS, quoteE){
+    quote: function(string, quoteS, quoteE){
       quoteS = quoteS || '"';
       quoteE = quoteE || STRING_QUOTE_PAIRS[quoteS] || quoteS;
       var rx = (quoteS.length == 1 ? quoteS : '') + (quoteE.length == 1 ? quoteE : '');
-      return quoteS + (rx ? this.replace(QUOTE_REGEXP_CACHE[rx] || (QUOTE_REGEXP_CACHE[rx] = new RegExp('[' + rx.forRegExp() + ']', 'g')), "\\$&") : this) + quoteE;
+      return quoteS + (rx ? string.replace(QUOTE_REGEXP_CACHE[rx] || (QUOTE_REGEXP_CACHE[rx] = new RegExp('[' + rx.forRegExp() + ']', 'g')), "\\$&") : string) + quoteE;
     },
-    capitalize: function(){
-      return this.charAt(0).toUpperCase() + this.substr(1).toLowerCase();
+    capitalize: function(string){
+      return string.charAt(0).toUpperCase() + string.substr(1).toLowerCase();
     },
-    camelize: function(){
-      return this.replace(/-(.)/g, function(m, chr){ return chr.toUpperCase(); });
+    camelize: function(string){
+      return string.replace(/-(.)/g, function(m, chr){ return chr.toUpperCase(); });
     },
-    dasherize: function(){
-      return this.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); });
-    }
-  });
+    dasherize: function(string){
+      return string.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); });
+    },
+    trimLeft: function(string){
+      return string.replace(/^\s+/, '');
+    },
+    trimRight: function(string){
+      return string.replace(/\s+$/, '');
+    }    
+  };
+  var stringExt2 = {
+    toLowerCase: function(value){
+      return String.prototype.toLowerCase.call(value);
+    },
+    toUpperCase: function(value){
+      return String.prototype.toUpperCase.call(value);
+    },
+    trim: function(value){
+      return String.prototype.trim.call(value);
+    },
+    trimLeft: stringExt.trimLeft,
+    trimRight: stringExt.trimRight
+  };
+
+  extendPrototype(String, stringExt);
+  complete(String, stringExt2);
 
 
   // Fix some methods
@@ -2288,16 +2266,14 @@
       runOnce: runOnce,
       body: functionBody
     },
-    array: extend(arrayFrom, extend(arrayExt, {
+    array: extend(arrayFrom, merge(arrayExt, {
       from: arrayFrom,
       create: createArray
     })),
-    string: {
-      entity: Entity,
+    string: merge(stringExt, stringExt2, {
       isEmpty: isEmptyString,
-      isNotEmpty: isNotEmptyString,
-      format: String.prototype.format
-    }
+      isNotEmpty: isNotEmptyString
+    })
   });
 
   // add dev namespace, host for special functionality in development environment

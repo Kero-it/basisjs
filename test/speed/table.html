@@ -205,7 +205,7 @@
             }
           },
           { 
-            sorting: basis.getter('data.title', String.toLowerCase),
+            sorting: basis.getter('data.title', basis.string.toLowerCase),
 
             header: {
               content: 'title'
@@ -314,7 +314,7 @@
             return false;
           } : null);
         }
-      }, String.trim);
+      }, basis.string.trim);
 
       DOM.insert(document.body, DOM.createElement({
         description: 'INPUT',

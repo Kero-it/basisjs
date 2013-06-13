@@ -154,9 +154,8 @@
   * @namespace String.prototype
   */
   complete(String.prototype, {
-    // implemented at ECMAScript5
     trim: function(){
-      return this.replace(/^\s+/, '').replace(/\s+$/, '');
+      return this.replace(/^\s+|\s+$/g, '');
     }
   });
 

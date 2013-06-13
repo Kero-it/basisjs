@@ -1203,7 +1203,7 @@
         return (i % 3) == 2;
       };
 
-      Property.prototype.init.call(this, '', this.handlers, String.trim);
+      Property.prototype.init.call(this, '', this.handlers, basis.string.trim);
     }
   });
 
