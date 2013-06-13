@@ -222,7 +222,7 @@
 
     action: 'focus blur change keydown keypress keyup input'.qw().reduce(
       function(res, item){
-        var eventName = 'emit_field' + item.capitalize();
+        var eventName = 'emit_field' + basis.string.capitalize(item);
         res[item] = function(event){
           this.setValue(this.readFieldValue_());
           this[eventName](event);

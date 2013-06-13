@@ -14,6 +14,7 @@
   var cleaner = basis.cleaner;
   var getter = basis.getter;
   var arrayFrom = basis.array.from;
+  var binarySearchPos = basis.array.binarySearchPos;
 
 
   //
@@ -261,7 +262,6 @@
           return;
 
         // temporary remove from stack
-        //eventStack.splice(eventStack.binarySearchPos(eventObject), 1);
         eventStack.remove(eventObject);
         eventObject.eventTime = eventTime;
       }
@@ -280,7 +280,7 @@
       }
 
       // insert event into stack
-      eventStack.splice(eventStack.binarySearchPos(eventTime, EVENT_TIME_GETTER), 0, eventObject);
+      eventStack.splice(binarySearchPos(eventStack, eventTime, EVENT_TIME_GETTER), 0, eventObject);
 
       setNextTime();
     }
@@ -301,7 +301,7 @@
 
     function fire(){
       var now = Date.now();
-      var pos = eventStack.binarySearchPos(now + 15, EVENT_TIME_GETTER);
+      var pos = binarySearchPos(eventStack, now + 15, EVENT_TIME_GETTER);
 
       lockSetTimeout = true; // lock for set timeout if callback calling will add new events
       eventStack.splice(0, pos).forEach(function(eventObject){

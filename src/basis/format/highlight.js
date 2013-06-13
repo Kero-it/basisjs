@@ -65,7 +65,7 @@
       }
 
       var result = [];
-      var sym = text.toArray();
+      var sym = basis.string.toArray(text);
       var start;
       var lastMatchPos = 0;
       var strSym;
@@ -227,7 +227,7 @@
       }
 
       var result = [];
-      var sym = text.toArray();
+      var sym = basis.string.toArray(text);
       var start = 0;
       var lastMatchPos = 0;
       var strSym;
@@ -337,8 +337,7 @@
   function highlight(text, lang, options){
 
     function normalize(text){
-      text = text
-        .trimRight()
+      text = basis.string.trimRight(text)
         .replace(/\r\n|\n\r|\r/g, '\n');
 
       if (!options.keepFormat)
@@ -369,7 +368,7 @@
       }
 
       text = text.replace(new RegExp('(^|\\n)( +)', 'g'), function(m, a, b){
-        return a + '\xA0'.repeat(b.length);
+        return a + basis.string.repeat('\xA0', b.length);
       });
 
       return text; 

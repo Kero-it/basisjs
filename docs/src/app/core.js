@@ -587,7 +587,7 @@
     'jsdoc': function(resource){
 
       function getTextFromCode(source){
-        return source.replace(/(^|\*)\s+@/, '@').replace(/(^|\n+)\s*\*/g, '\n').trimLeft();
+        return basis.string.trimLeft(source.replace(/(^|\*)\s+@/, '@').replace(/(^|\n+)\s*\*/g, '\n'));
       }
 
       function createJsDocEntity(source, path){

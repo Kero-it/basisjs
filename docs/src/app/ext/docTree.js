@@ -35,7 +35,7 @@
   var nodeTypeGrouping = {
     sorting: basis.getter('data.id', groupWeight),
     groupGetter: function(node){
-      return node.data.isClassMember ? 'ClassMember' : node.data.kind.capitalize();
+      return node.data.isClassMember ? 'ClassMember' : basis.string.capitalize(node.data.kind);
     },
     childClass: {
       titleGetter: basis.getter('data.id', groupTitle),
@@ -51,7 +51,7 @@
 
     binding: {
       kind: function(node){
-        return node.data.kind && node.data.kind.capitalize();
+        return node.data.kind && basis.string.capitalize(node.data.kind);
       },
       args: function(node){
         if (/^(function|method|class|classMember)$/i.test(node.data.kind))
@@ -117,10 +117,10 @@
   */
   var DocTreeClassNode = DocTreeFolder.subclass({
     getMembers: function(){
-      return [
+      return basis.array.flatten([
         app.core.getMembers(this.data.fullPath + '.prototype'),
         app.core.getMembers(this.data.fullPath).map(function(item){ item.data.isClassMember = true; return item; })
-      ].flatten();
+      ]);
     }
   });
 

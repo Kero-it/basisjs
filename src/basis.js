@@ -1507,7 +1507,7 @@
   function extendPrototype(Class, methods){
     iterate(methods, function(methodName, method){
       Class.prototype[methodName] = function(){
-        // console.log('func', methodName);
+        // console.log(Class.name + '#' + methodName + ' called');
         return method.apply(null, [this].concat(arraySlice.call(arguments)));
       };
     });
@@ -1560,7 +1560,7 @@
       return arrayConcat.apply([], array);
     },
     repeat: function(array, count){
-      return createArray(parseInt(count, 10) || 0, array).flatten();
+      return arrayConcat.apply([], createArray(count || 0, array));
     },
  
     // getters
@@ -1674,7 +1674,7 @@
       return strong ? -1 : pos + ((compareValue < value) ^ desc);
     },
     binarySearch: function(array, value, getter){ // position of value
-      return array.binarySearchPos(value, getter, false, true);
+      return arrayExt.binarySearchPos(array, value, getter, false, true);
     },
  
     // collection for
@@ -1699,17 +1699,17 @@
  
       return array
         .map(function(item, index){
-           return {
-             i: index,        // index
-             v: getter_(item) // value
-           };
-         })
+          return {
+            i: index,        // index
+            v: getter_(item) // value
+          };
+        })
         .sort(comparator || function(a, b){           // stability sorting (neccessary only for browsers with no strong sorting, just for sure)
-           return desc * ((a.v > b.v) || -(a.v < b.v) || (a.i > b.i ? 1 : -1));
-         })
+          return desc * ((a.v > b.v) || -(a.v < b.v) || (a.i > b.i ? 1 : -1));
+        })
         .map(function(item){
-           return this[item.i];
-         }, array);
+          return this[item.i];
+        }, array);
     },
     set: function(array, source){
       if (array !== source)
@@ -1866,7 +1866,7 @@
   {
     String.prototype.split = function(pattern, count){
       if (pattern == '' || (pattern && pattern.source == ''))
-        return this.toArray();
+        return stringExt.toArray(this);
 
       var result = [];
       var pos = 0;

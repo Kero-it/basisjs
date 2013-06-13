@@ -37,7 +37,7 @@
   * build path references to dom nodes in template
   */
   var buildPathes = (function(){
-    var PATH_REF_NAME = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.toArray();
+    var PATH_REF_NAME = basis.string.toArray('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ');
 
     var pathList;
     var refList;

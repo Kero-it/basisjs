@@ -203,7 +203,7 @@
     */
     var namespace = 'basis.crypt.Base64';
 
-    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".toArray();
+    var chars = basis.string.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=");
     var charIndex = {};
     
     chars.forEach(function(item, index){ charIndex[item] = index; });
@@ -321,7 +321,9 @@
     if (Array.isArray(input))
       output = input.map(HEX);
     else
-      output = String(input).toArray().map(function(c){ return number2hex(c.charCodeAt(0)); });
+      output = basis.string.toArray(String(input)).map(function(c){
+        return number2hex(c.charCodeAt(0));
+      });
 
     return output.join('');
   }
@@ -417,7 +419,7 @@
       }
 
       // return sha1 hash bytes array
-      return H.map(vector).flatten();
+      return basis.array.flatten(H.map(vector));
     };
   })();
 
@@ -446,7 +448,12 @@
     ];
 
     function initConst(){
-      S = [[7,12,17,22].repeat(4), [5,9,14,20].repeat(4), [4,11,16,23].repeat(4), [6,10,15,21].repeat(4)].flatten();
+      S = basis.array.flatten([
+        basis.array.repeat([7,12,17,22], 4),
+        basis.array.repeat([5,9,14,20], 4),
+        basis.array.repeat([4,11,16,23], 4),
+        basis.array.repeat([6,10,15,21], 4)
+      ]);
 
       for (var i = 0; i < 64; i++)
       {
@@ -533,7 +540,7 @@
       }
 
       // return md5 hash bytes array
-      return A.map(vector).flatten();
+      return basis.array.flatten(A.map(vector));
     };
   })();
 

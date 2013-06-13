@@ -27,6 +27,7 @@
   var Class = basis.Class;
   var complete = basis.object.complete;
   var arrayFrom = basis.array.from;
+  var binarySearchPos = basis.array.binarySearchPos;
   var $undef = basis.fn.$undef;
   var getter = basis.getter;
   var nullGetter = basis.fn.nullGetter;
@@ -1335,7 +1336,7 @@
           else
           {
             // when sorting use binary search
-            pos = groupNodes.binarySearchPos(newChildValue, sortingSearch, sortingDesc);
+            pos = binarySearchPos(groupNodes, newChildValue, sortingSearch, sortingDesc);
             newChild.sortingValue = newChildValue;
           }
         }
@@ -1397,7 +1398,7 @@
             return newChild;
 
           // search for refChild
-          pos = childNodes.binarySearchPos(newChildValue, sortingSearch, sortingDesc);
+          pos = binarySearchPos(childNodes, newChildValue, sortingSearch, sortingDesc);
           refChild = childNodes[pos];
           newChild.sortingValue = newChildValue; // change sortingValue AFTER search
 
