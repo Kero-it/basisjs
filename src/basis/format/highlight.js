@@ -395,7 +395,7 @@
         '<div class="line ' + (i % 2 ? 'odd' : 'even') + lineClass + '">' +
           '<span class="lineContent">' + 
             (!options.noLineNumber
-              ? '<input class="lineNumber" value="' + (i + 1).lead(numberWidth) + '" type="none" unselectable="on" readonly="readonly" tabindex="-1" />' +
+              ? '<input class="lineNumber" value="' + basis.number.lead(i + 1, numberWidth) + '" type="none" unselectable="on" readonly="readonly" tabindex="-1" />' +
                 '<span class="over"></span>'
               : ''
             ) +

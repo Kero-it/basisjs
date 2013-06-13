@@ -108,7 +108,7 @@
       this.initOffset = this.tmpl.scrollThumb.offsetLeft;
     },
     drag: function(sender, dragData){
-      var pos = ((this.initOffset + dragData.deltaX) / this.tmpl.scrollThumbWrapper.offsetWidth).fit(0, 1);
+      var pos = basis.number.fit((this.initOffset + dragData.deltaX) / this.tmpl.scrollThumbWrapper.offsetWidth, 0, 1);
       this.setSpanStartPage(Math.round(pos * (this.pageCount - this.pageSpan)));
       this.tmpl.scrollThumb.style.left = percent(pos);
     },
@@ -240,7 +240,7 @@
       this.setActivePage(arguments.length == 3 ? activePage : this.activePage);
     },
     setActivePage: function(newActivePage, spotlightActivePage){
-      newActivePage = newActivePage.fit(0, this.pageCount - 1);
+      newActivePage = basis.number.fit(newActivePage, 0, this.pageCount - 1);
 
       if (newActivePage != this.activePage)
       {
@@ -259,7 +259,7 @@
       this.setSpanStartPage(pageNumber - Math.round(this.pageSpan / 2) + 1);
     },
     setSpanStartPage: function(pageNumber){
-      pageNumber = pageNumber.fit(0, this.pageCount - this.pageSpan);
+      pageNumber = basis.number.fit(pageNumber, 0, this.pageCount - this.pageSpan);
 
       if (pageNumber != this.spanStartPage_)
       {
@@ -271,7 +271,7 @@
         updateSelection(this);
       }
 
-      this.tmpl.scrollThumb.style.left = percent((pageNumber / Math.max(this.pageCount - this.pageSpan, 1)).fit(0, 1));
+      this.tmpl.scrollThumb.style.left = percent(basis.number.fit(pageNumber / Math.max(this.pageCount - this.pageSpan, 1), 0, 1));
     },
 
     destroy: function(){

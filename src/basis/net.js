@@ -311,8 +311,8 @@
 
   function escapeValue(value){
     return String(value).replace(ESCAPE_CHARS, function(m){
-      var code = m.charCodeAt(0).toHex();
-      return '%' + (code.length < 2 ? '0' : '') + code;
+      var code = m.charCodeAt(0).toString(16);
+      return '%' + (code.length % 2 ? '0' : '') + code;
     });
   }
 

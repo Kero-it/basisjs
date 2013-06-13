@@ -613,7 +613,7 @@
         var tw;
         for (var i = 0; i < partCount + 1; i++)
         {
-          valueLabels[i] = Math.round(minValue + gridPart * i).group();
+          valueLabels[i] = basis.number.group(Math.round(minValue + gridPart * i));
           tw = context.measureText(valueLabels[i]).width;
 
           if (tw > maxValueTextWidth)
@@ -1305,7 +1305,7 @@
         if (isNaN(value))
           continue;
 
-        var valueText = Number(value.toFixed(2)).group();
+        var valueText = basis.number.group(value.toFixed(2));
         var valueTextWidth = context.measureText(valueText).width;
 
         if (labelWidth < valueTextWidth)
@@ -1522,7 +1522,7 @@
 
       var TOOLTIP_PADDING = 5;
 
-      var tooltipText = keyTitle + ', ' + legendText + ', ' + Number(hoveredBar.value.toFixed(2)).group();
+      var tooltipText = keyTitle + ', ' + legendText + ', ' + basis.number.group(hoveredBar.value.toFixed(2));
       context.font = "10px Tahoma";
       
       var tooltipTextWidth = context.measureText(tooltipText).width;

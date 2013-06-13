@@ -196,11 +196,9 @@
     },
     quarter: function(period){
       return l10nToken(namespace, 'quarter');
-      //return LOCALE('QUARTER').toLowerCase().format(1 + period.periodStart.getMonth().base(3)/3);
     },
     month: function(period){
       return l10nToken(namespace, 'monthShort', monthNumToRef[period.periodStart.getMonth()]);
-      //return LOCALE('MONTH').SHORT[period.periodStart.getMonth()].toLowerCase();
     },
     day: function(period){
       return period.periodStart.getDate();
@@ -601,7 +599,7 @@
       {
         var year = date.getFullYear();
         var start = year - year % 10;
-        return start + '-' + (Number(start.toString().substr(-2)) + 9).lead(2);
+        return start + '-' + basis.number.lead(Number(start.toString().substr(-2)) + 9, 2);
       }
     },
 
@@ -646,10 +644,6 @@
         }
       }
     }
-/*
-    getTitle: function(periodStart){
-      return [Math.floor(1 + periodStart.getMonth().base(3)/3), LOCALE('QUARTER').toLowerCase(), periodStart.getFullYear()].join(' ');
-    }*/
   });
 
   //

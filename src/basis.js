@@ -1912,55 +1912,57 @@
   * @namespace Number.prototype
   */
 
-  extend(Number.prototype, {
-    fit: function(min, max){
-      if (!isNaN(min) && this < min)
+  var numberExt = {
+    fit: function(number, min, max){
+      if (!isNaN(min) && number < min)
         return Number(min);
-      if (!isNaN(max) && this > max)
+      if (!isNaN(max) && number > max)
         return Number(max);
-      return this;
+      return number;
     },
-    between: function(min, max){
-      return !isNaN(this) && this >= min && this <= max;
+    between: function(number, min, max){
+      return !isNaN(number) && number >= min && number <= max;
     },
-    quote: function(start, end){
-      return (this + '').quote(start, end);
+    quote: function(number, start, end){
+      return stringExt.quote(number + '', start, end);
     },
-    toHex: function(){
-      return parseInt(this, 10).toString(16).toUpperCase();
+    toHex: function(number){
+      return parseInt(number, 10).toString(16).toUpperCase();
     },
-    sign: function(){
-      return this < 0 ? -1 : +(this > 0);
+    sign: function(number){
+      return number < 0 ? -1 : +(number > 0);
     },
-    base: function(div){
-      return !div || isNaN(div) ? 0 : Math.floor(this/div) * div;
+    base: function(number, div){
+      return !div || isNaN(div) ? 0 : Math.floor(number / div) * div;
     },
-    lead: function(len, leadChar){
+    lead: function(number, len, leadChar){
       // convert to string and lead first digits by leadChar
-      return (this + '').replace(/\d+/, function(number){
+      return (number + '').replace(/\d+/, function(num){
         // substract number length from desired length converting len to Number and indicates how much leadChars we need to add
         // here is no isNaN(len) check, because comparation of NaN and a Number is always false
-        return (len -= number.length - 1) > 1 ? new Array(len).join(leadChar || 0) + number : number;
+        return (len -= num.length - 1) > 1 ? new Array(len).join(leadChar || 0) + num : num;
       });
     },
-    group: function(len, splitter){
-      return (this + '').replace(/\d+/, function(number){
-        return number.replace(/\d/g, function(m, pos){
-          return !pos + (number.length - pos) % (len || 3) ? m : (splitter || ' ') + m;
+    group: function(number, len, splitter){
+      return (number + '').replace(/\d+/, function(num){
+        return num.replace(/\d/g, function(m, pos){
+          return !pos + (num.length - pos) % (len || 3) ? m : (splitter || ' ') + m;
         });
       });
     },
-    format: function(prec, gs, prefix, postfix, comma){
-      var res = this.toFixed(prec);
+    format: function(number, prec, gs, prefix, postfix, comma){
+      var res = number.toFixed(prec);
       if (gs || comma)
-        res = res.replace(/(\d+)(\.?)/, function(m, number, c){
-          return (gs ? Number(number).group(3, gs) : number) + (c ? comma || c : '');
+        res = res.replace(/(\d+)(\.?)/, function(m, num, c){
+          return (gs ? numberExt.group(num, 3, gs) : num) + (c ? comma || c : '');
         });
       if (prefix)
         res = res.replace(/^-?/, '$&' + (prefix || ''));
       return res + (postfix || '');
     }
-  });
+  };
+
+  extendPrototype(Number, numberExt);
 
 
  /**
@@ -2273,7 +2275,8 @@
     string: merge(stringExt, stringExt2, {
       isEmpty: isEmptyString,
       isNotEmpty: isNotEmptyString
-    })
+    }),
+    number: numberExt
   });
 
   // add dev namespace, host for special functionality in development environment

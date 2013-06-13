@@ -277,7 +277,7 @@ basis.ready(function(){
         fontSize: {
           events: 'update',
           getter: function(node){
-            return '{0:.2}%'.format(80 + 120 * node.data.percentOfMax.fit(0, 1));
+            return '{0:.2}%'.format(80 + 120 * basis.number.fit(node.data.percentOfMax, 0, 1));
           }
         }
       },
